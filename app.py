@@ -176,10 +176,10 @@ def asprak_login():
         return redirect(url_for('asprak_dashboard'))
     
     if request.method == 'POST':
-        name = request.form.get('name')
+        name = request.form.get('name', '').strip()
         password = request.form.get('password')
         conn = get_db()
-        user = conn.execute('SELECT * FROM users WHERE role="ASPRAK" AND name=? AND password=?', (name, password)).fetchone()
+        user = conn.execute('SELECT * FROM users WHERE role="ASPRAK" AND LOWER(name)=LOWER(?) AND password=?', (name, password)).fetchone()
         conn.close()
         
         if user:
@@ -189,10 +189,7 @@ def asprak_login():
         else:
             flash('Login gagal, periksa nama atau password', 'error')
             
-    conn = get_db()
-    aspraks = conn.execute('SELECT name FROM users WHERE role="ASPRAK"').fetchall()
-    conn.close()
-    return render_template('login.html', aspraks=aspraks)
+    return render_template('login.html')
 
 @app.route('/logout')
 def logout():

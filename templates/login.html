@@ -11,12 +11,7 @@
         <form method="POST" action="{{ url_for('asprak_login') }}">
             <div class="form-group">
                 <label for="name">Nama Asisten</label>
-                <select name="name" id="name" class="form-control" required>
-                    <option value="" disabled selected>Pilih Nama...</option>
-                    {% for a in aspraks %}
-                        <option value="{{ a.name }}">{{ a.name }}</option>
-                    {% endfor %}
-                </select>
+                <input type="text" name="name" id="name" class="form-control" placeholder="Masukkan nama..." required autocomplete="off">
             </div>
             
             <div class="form-group">
@@ -26,9 +21,6 @@
             
             <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">Login</button>
         </form>
-        <p style="text-align:center; margin-top:1.5rem; font-size:0.8rem; color:var(--text-muted); line-height: 1.5;">
-            Password: nopal → pass1, afrian → pass2, aza → pass3, asad → pass4
-        </p>
     </div>
 </div>
 {% endblock %}
