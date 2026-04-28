@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Siprakmekatronika26 - Sistem Manajemen Praktikum</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        // Apply saved theme immediately to prevent flash
+        (function() {
+            const saved = localStorage.getItem('siprak-theme');
+            if (saved === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" style="text-decoration:none;"><h1>Siprakmekatronika26</h1></a>
+            <nav class="nav-links">
+                {% if current_user %}
+                    {% if current_user.role == 'ASPRAK' %}
+                        <a href="{{ url_for('asprak_dashboard') }}">Dashboard</a>
+                    {% endif %}
+                    <span>Halo, {{ current_user.name }}</span>
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('index') }}">Beranda</a>
+                    <a href="{{ url_for('praktikan_dashboard') }}">Portal Praktikan</a>
+                    <a href="{{ url_for('asprak_login') }}" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Login Asprak</a>
+                {% endif %}
+                <!-- Dark Mode Toggle -->
+                <div class="theme-toggle" onclick="toggleTheme()" title="Ganti tema terang/gelap">
+                    <div class="theme-toggle__track">
+                        <div class="theme-toggle__thumb"></div>
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert {{ category }} animate-fade">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <main class="animate-fade">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                html.removeAttribute('data-theme');
+                localStorage.setItem('siprak-theme', 'light');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                localStorage.setItem('siprak-theme', 'dark');
+            }
+        }
+    </script>
+</body>
+</html>

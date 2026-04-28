@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="text-align: center; padding: 4rem 0 3rem;">
+    <p style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 2px; color: var(--primary); font-weight: 600; margin-bottom: 1rem;">Sistem Manajemen Praktikum</p>
+    <h1 style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--primary);">Selamat Datang di Siprakmekatronika26</h1>
+    <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 3rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+        Platform terpadu untuk pengumpulan modul dan penilaian praktikum yang lebih efisien.
+    </p>
+
+    <div class="grid grid-cols-2" style="max-width: 700px; margin: 0 auto;">
+        <div class="card glass-panel" style="text-align: center;">
+            <div style="font-size: 2rem; margin-bottom: 1rem;">📄</div>
+            <h2 class="card-title" style="text-align: center;">Portal Praktikan</h2>
+            <p style="color: var(--text-muted); margin-bottom: 2rem;">Kumpulkan modul praktikum sebagai perwakilan kelompok.</p>
+            <a href="{{ url_for('praktikan_dashboard') }}" class="btn btn-primary" style="width: 100%;">Masuk Portal</a>
+        </div>
+        
+        <div class="card glass-panel" style="text-align: center;">
+            <div style="font-size: 2rem; margin-bottom: 1rem;">📊</div>
+            <h2 class="card-title" style="text-align: center;">Portal Asprak</h2>
+            <p style="color: var(--text-muted); margin-bottom: 2rem;">Kelola pengumpulan dan berikan nilai kepada praktikan.</p>
+            <a href="{{ url_for('asprak_login') }}" class="btn btn-outline" style="width: 100%;">Login Asprak</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

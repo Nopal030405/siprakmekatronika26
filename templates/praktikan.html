@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <h2 style="font-size: 2rem; color: var(--primary);">Portal Pengumpulan Modul</h2>
+    <p style="color: var(--text-muted);">Silakan isi form di bawah ini untuk mengumpulkan modul praktikum sebagai perwakilan kelompok Anda.</p>
+</div>
+
+<div class="card glass-panel">
+    <form method="POST" action="{{ url_for('praktikan_submit') }}" enctype="multipart/form-data" style="max-width: 560px;">
+        <div class="form-group">
+            <label for="praktikan_name">Nama Perwakilan</label>
+            <input type="text" name="praktikan_name" id="praktikan_name" class="form-control" placeholder="Masukkan nama Anda..." required>
+        </div>
+        
+        <div class="form-group">
+            <label for="group_id">Kelompok</label>
+            <select name="group_id" id="group_id" class="form-control" required>
+                <option value="" disabled selected>Pilih Kelompok...</option>
+                {% for g in groups %}
+                    <option value="{{ g.group_id }}">Kelompok {{ g.group_id }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="module_id">Modul Praktikum</label>
+            <select name="module_id" id="module_id" class="form-control" required onchange="updateModuleInfo(this)">
+                <option value="" disabled selected>Pilih Modul...</option>
+                {% for m in modules %}
+                    <option value="{{ m.id }}" data-desc="{{ m.description or 'Tidak ada instruksi khusus.' }}" data-open="{{ m.is_open }}">
+                        {{ m.name }}{% if m.is_open == 0 %} (DITUTUP){% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Area Instruksi Modul -->
+        <div id="module-instruction-card" class="glass-panel" style="margin-bottom: 1.5rem; padding: 1rem 1.25rem; border-left: 3px solid var(--primary); display: none;">
+            <h4 id="instruction-title" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--primary); margin-bottom: 0.4rem; font-weight: 600;">📋 Instruksi Pengumpulan</h4>
+            <p id="module-desc" style="font-size: 0.9rem; color: var(--text-main); margin: 0;"></p>
+            <p id="closed-msg" style="color: var(--danger); font-weight: 700; margin-top: 0.5rem; display: none;">⛔ PENGUMPULAN SUDAH DITUTUP</p>
+        </div>
+        
+        <script>
+            function updateModuleInfo(select) {
+                const option = select.options[select.selectedIndex];
+                const desc = option.getAttribute('data-desc');
+                const isOpen = option.getAttribute('data-open') === '1';
+                
+                const infoCard = document.getElementById('module-instruction-card');
+                const descText = document.getElementById('module-desc');
+                const closedMsg = document.getElementById('closed-msg');
+                const submitBtn = document.getElementById('submitBtn');
+                const title = document.getElementById('instruction-title');
+                const fileInput = document.getElementById('file');
+                
+                if (option.value) {
+                    descText.innerText = desc;
+                    infoCard.style.display = 'block';
+                    
+                    if (!isOpen) {
+                        closedMsg.style.display = 'block';
+                        submitBtn.disabled = true;
+                        submitBtn.innerText = '⛔ Pengumpulan Ditutup';
+                        infoCard.style.borderLeftColor = 'var(--danger)';
+                        title.style.color = 'var(--danger)';
+                        fileInput.disabled = true;
+                    } else {
+                        closedMsg.style.display = 'none';
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = 'Kumpulkan Modul';
+                        infoCard.style.borderLeftColor = 'var(--primary)';
+                        title.style.color = 'var(--primary)';
+                        fileInput.disabled = false;
+                    }
+                } else {
+                    infoCard.style.display = 'none';
+                }
+            }
+        </script>
+        
+        <div class="form-group">
+            <label for="file">File Modul (ZIP / PDF / DOC)</label>
+            <input type="file" name="file" id="file" class="form-control" accept=".pdf,.doc,.docx,.zip" required>
+        </div>
+        
+        <button type="submit" id="submitBtn" class="btn btn-primary" style="margin-top: 0.5rem; width: 100%;">Kumpulkan Modul</button>
+    </form>
+</div>
+{% endblock %}

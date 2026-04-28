@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <h2 style="font-size: 2rem; color: var(--primary);">Dashboard Asprak</h2>
+    <p style="color: var(--text-muted);">Kelola nilai dan pengumpulan tugas praktikum di sini.</p>
+</div>
+
+<div class="grid" style="grid-template-columns: 1fr;">
+
+    <!-- ===================== MANAJEMEN MODUL (Nopal Only) ===================== -->
+    {% if current_user.name.lower() == 'nopal' %}
+    <div class="card glass-panel" style="border-left: 3px solid var(--primary);">
+        <h3 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+            ⚙️ Pengaturan Modul
+            <span style="font-size: 0.7rem; background: var(--primary-light); color: var(--primary); padding: 0.15rem 0.5rem; border-radius: 999px; font-weight: 600;">ADMIN</span>
+        </h3>
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <!-- Tambah Modul -->
+            <div>
+                <h4 style="margin-bottom: 1rem; color: var(--primary); font-size: 0.95rem;">Tambah Modul Baru</h4>
+                <form method="POST" action="{{ url_for('add_module') }}">
+                    <div class="form-group">
+                        <label>Nama Modul</label>
+                        <input type="text" name="name" class="form-control" placeholder="Contoh: Modul 2" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Instruksi / Deadline</label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="Contoh: Pengumpulan 28-29 April..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">+ Tambah Modul</button>
+                </form>
+            </div>
+            <!-- Edit/Tutup Modul -->
+            <div>
+                <h4 style="margin-bottom: 1rem; color: var(--primary); font-size: 0.95rem;">Edit & Status Modul</h4>
+                <form method="POST" action="{{ url_for('edit_module') }}" style="margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label>Pilih Modul</label>
+                        <select name="module_id" class="form-control" required onchange="updateEditForm(this)">
+                            <option value="" disabled selected>Pilih Modul...</option>
+                            {% for m in modules %}
+                                <option value="{{ m.id }}" data-name="{{ m.name }}" data-desc="{{ m.description }}" data-open="{{ m.is_open }}">
+                                    {{ m.name }} {% if m.is_open == 0 %}🔴 Tutup{% else %}🟢 Buka{% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Modul</label>
+                        <input type="text" name="name" id="edit_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Instruksi / Deadline</label>
+                        <textarea name="description" id="edit_desc" class="form-control" rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-secondary" style="width: 100%;">Simpan Perubahan</button>
+                </form>
+                
+                <form method="POST" action="{{ url_for('toggle_module_status') }}">
+                    <input type="hidden" name="module_id" id="toggle_module_id">
+                    <input type="hidden" name="current_status" id="toggle_current_status">
+                    <button type="submit" id="toggleBtn" class="btn" style="width: 100%; display:none; margin-top: 0.5rem;"></button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>
+        function updateEditForm(select) {
+            const option = select.options[select.selectedIndex];
+            document.getElementById('edit_name').value = option.getAttribute('data-name');
+            document.getElementById('edit_desc').value = option.getAttribute('data-desc') || '';
+            
+            const isOpen = option.getAttribute('data-open') === '1';
+            const toggleBtn = document.getElementById('toggleBtn');
+            document.getElementById('toggle_module_id').value = option.value;
+            document.getElementById('toggle_current_status').value = isOpen ? '1' : '0';
+            toggleBtn.style.display = 'block';
+            
+            if (isOpen) {
+                toggleBtn.innerText = '🛑 Tutup Pengumpulan';
+                toggleBtn.className = 'btn btn-danger';
+                toggleBtn.style.width = '100%';
+            } else {
+                toggleBtn.innerText = '✅ Buka Pengumpulan';
+                toggleBtn.className = 'btn btn-success';
+                toggleBtn.style.width = '100%';
+            }
+        }
+    </script>
+    {% endif %}
+
+    <!-- ===================== DAFTAR PENGUMPULAN ===================== -->
+    <div class="card glass-panel">
+        <h3 class="card-title">📥 Modul Terkumpul</h3>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Waktu</th>
+                        <th>Kelompok</th>
+                        <th>Modul</th>
+                        <th>File</th>
+                        <th>Perwakilan</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in submissions %}
+                    <tr>
+                        <td style="font-size: 0.85rem;">{{ sub.timestamp.split('.')[0] }}</td>
+                        <td>Kel. {{ sub.group_id }}</td>
+                        <td>{{ sub.module_name }}</td>
+                        <td>
+                            <a href="{{ url_for('download_file', name=sub.file_path) }}" target="_blank" style="color:var(--primary); font-weight:600; text-decoration:none;">📎 Download</a>
+                        </td>
+                        <td>{{ sub.submitter_name if sub.submitter_name else '—' }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('delete_submission', id=sub.id) }}" onsubmit="return confirm('Yakin ingin mereset pengumpulan ini?');" style="display:inline;">
+                                <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Reset</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">Belum ada modul yang dikumpulkan.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ===================== PENILAIAN PRAKTIKAN ===================== -->
+    <div class="card glass-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+            <h3 class="card-title" style="margin-bottom: 0;">📝 Penilaian Praktikan</h3>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <a href="{{ url_for('export_excel') }}" class="btn btn-secondary" style="font-size: 0.85rem;">
+                    📥 Cetak Excel
+                </a>
+                <button type="submit" form="batchGradeForm" class="btn btn-primary" style="font-size: 0.85rem;">
+                    🚀 Simpan Semua Perubahan
+                </button>
+            </div>
+        </div>
+        
+        <form id="batchGradeForm" method="POST" action="{{ url_for('asprak_grade_batch') }}">
+            <div style="overflow-x: auto; position: relative;">
+                <table class="grade-table">
+                    <thead>
+                        <tr>
+                            <th>Kel.</th>
+                            <th>Nama Praktikan</th>
+                            {% for m in modules %}
+                                <th style="text-align:center;">{{ m.name }}<br><small style="font-weight: 400; opacity: 0.7;">(TP / Prak / Modul / Buku)</small></th>
+                            {% endfor %}
+                            <th style="text-align:center;">Total</th>
+                            <th style="text-align:center;">Huruf</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in praktikans %}
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-muted); font-size: 0.85rem;">{{ p.group_id }}</td>
+                            <td>
+                                <input type="text" name="praktikan_name_{{ p.id }}" value="{{ p.name }}" class="form-control" style="border: 1px solid transparent; background: transparent; font-weight: 600; padding: 0.3rem 0.5rem; width: 100%; min-width: 120px; color: var(--text-main);" title="Klik untuk mengedit nama">
+                            </td>
+                            
+                            {% for m in modules %}
+                            {% set g = p.grades.get(m.id, {'tp_score': 0, 'praktikum_score': 0, 'modul_score': 0, 'pembukuan_score': 0}) %}
+                            <td style="min-width: 250px; text-align:center;">
+                                <div style="display: flex; gap: 0.2rem; justify-content: center; align-items: center;">
+                                    <input type="number" name="tp_score_{{ p.id }}_{{ m.id }}" value="{{ g.tp_score }}" class="form-control" style="width: 45px; padding: 0.25rem; text-align: center; font-size: 0.8rem;" title="TP" min="0" max="100">
+                                    <input type="number" name="praktikum_score_{{ p.id }}_{{ m.id }}" value="{{ g.praktikum_score }}" class="form-control" style="width: 45px; padding: 0.25rem; text-align: center; font-size: 0.8rem;" title="Prak" min="0" max="100">
+                                    <input type="number" name="modul_score_{{ p.id }}_{{ m.id }}" value="{{ g.modul_score }}" class="form-control" style="width: 45px; padding: 0.25rem; text-align: center; font-size: 0.8rem;" title="Modul" min="0" max="100">
+                                    <input type="number" name="pembukuan_score_{{ p.id }}_{{ m.id }}" value="{{ g.pembukuan_score }}" class="form-control" style="width: 45px; padding: 0.25rem; text-align: center; font-size: 0.8rem; border-color: var(--secondary);" title="Pembukuan" min="0" max="100">
+                                </div>
+                            </td>
+                            {% endfor %}
+                            
+                            <!-- Total -->
+                            <td style="text-align:center; font-weight: 700; font-size: 1rem;">
+                                {{ p.total }}
+                            </td>
+                            <!-- Huruf Kelulusan -->
+                            <td style="text-align:center;">
+                                {% if p.letter in ('A', 'B+', 'B') %}
+                                    <span style="background: var(--success-bg); color: var(--success); padding: 0.2rem 0.6rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem;">{{ p.letter }}</span>
+                                {% elif p.letter in ('D', 'E') %}
+                                    <span style="background: var(--danger-bg); color: var(--danger); padding: 0.2rem 0.6rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem;">{{ p.letter }}</span>
+                                {% else %}
+                                    <span style="background: var(--primary-light); color: var(--primary); padding: 0.2rem 0.6rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem;">{{ p.letter }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}
