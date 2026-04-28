@@ -1,205 +1,179 @@
 {% extends "base.html" %}
-
 {% block content %}
-<div style="margin-bottom: 2rem;">
-    <h2 style="font-size: 2rem; color: var(--primary);">Dashboard Asprak</h2>
-    <p style="color: var(--text-muted);">Kelola nilai dan pengumpulan tugas praktikum di sini.</p>
+<div style="margin-bottom: 1.5rem;">
+    <h2 style="font-size: 1.8rem; color: var(--primary);">Dashboard Asprak</h2>
+    <!-- Course Selector -->
+    <form method="GET" action="{{ url_for('asprak_dashboard') }}" style="display:flex; align-items:center; gap:0.75rem; margin-top:0.75rem; flex-wrap:wrap;">
+        <label style="font-weight:600; color:var(--text-muted); font-size:0.85rem;">Mata Kuliah:</label>
+        <select name="course_id" class="form-control" style="width:auto; min-width:200px;" onchange="this.form.submit()">
+            {% for c in courses %}
+            <option value="{{ c.id }}" {% if c.id == sel_course %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
 </div>
 
 <div class="grid" style="grid-template-columns: 1fr;">
 
-    <!-- ===================== MANAJEMEN MODUL (Nopal Only) ===================== -->
-    {% if current_user.name.lower() == 'nopal' %}
-    <div class="card glass-panel" style="border-left: 3px solid var(--primary);">
-        <h3 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
-            ⚙️ Pengaturan Modul
-            <span style="font-size: 0.7rem; background: var(--primary-light); color: var(--primary); padding: 0.15rem 0.5rem; border-radius: 999px; font-weight: 600;">ADMIN</span>
-        </h3>
-        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 2rem;">
-            <!-- Tambah Modul -->
-            <div>
-                <h4 style="margin-bottom: 1rem; color: var(--primary); font-size: 0.95rem;">Tambah Modul Baru</h4>
-                <form method="POST" action="{{ url_for('add_module') }}">
-                    <div class="form-group">
-                        <label>Nama Modul</label>
-                        <input type="text" name="name" class="form-control" placeholder="Contoh: Modul 2" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Instruksi / Deadline</label>
-                        <textarea name="description" class="form-control" rows="2" placeholder="Contoh: Pengumpulan 28-29 April..."></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">+ Tambah Modul</button>
+<!-- ========== ADMIN PANEL ========== -->
+{% if admin %}
+<div class="card glass-panel" style="border-left: 3px solid var(--primary);">
+    <h3 class="card-title">⚙️ Panel Admin <span style="font-size:0.7rem; background:var(--primary-light); color:var(--primary); padding:0.15rem 0.5rem; border-radius:999px; font-weight:600;">ADMIN</span></h3>
+    <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
+        <!-- Tambah MK -->
+        <div>
+            <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">📚 Tambah Mata Kuliah</h4>
+            <form method="POST" action="{{ url_for('add_course') }}">
+                <div class="form-group"><label>Nama MK</label><input type="text" name="course_name" class="form-control" placeholder="Contoh: Pengolahan Citra" required></div>
+                <div class="form-group"><label>Deskripsi</label><input type="text" name="course_desc" class="form-control" placeholder="Keterangan..."></div>
+                <button type="submit" class="btn btn-primary" style="width:100%; font-size:0.8rem;">+ Tambah MK</button>
+            </form>
+        </div>
+        <!-- Tambah Asprak -->
+        <div>
+            <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">👤 Tambah Asprak Baru</h4>
+            <form method="POST" action="{{ url_for('add_asprak') }}">
+                <div class="form-group"><label>Nama</label><input type="text" name="asprak_name" class="form-control" placeholder="Nama asprak" required></div>
+                <div class="form-group"><label>Password</label><input type="text" name="asprak_password" class="form-control" placeholder="Password" required></div>
+                <div class="form-group"><label>Mata Kuliah</label>
+                    <select name="asprak_course_id" class="form-control" required>
+                        {% for c in courses %}<option value="{{ c.id }}" {% if c.id == sel_course %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%; font-size:0.8rem;">+ Tambah Asprak</button>
+            </form>
+        </div>
+        <!-- Edit Asprak -->
+        <div>
+            <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">✏️ Edit / Hapus Asprak</h4>
+            {% for a in aspraks %}
+            {% if not a.is_admin %}
+            <div style="display:flex; gap:0.3rem; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap;">
+                <form method="POST" action="{{ url_for('edit_asprak') }}" style="display:flex; gap:0.3rem; flex:1; align-items:center;">
+                    <input type="hidden" name="asprak_id" value="{{ a.id }}">
+                    <input type="text" name="edit_asprak_name" value="{{ a.name }}" class="form-control" style="padding:0.3rem 0.5rem; font-size:0.8rem; flex:1;">
+                    <input type="text" name="edit_asprak_password" placeholder="pwd baru" class="form-control" style="padding:0.3rem 0.5rem; font-size:0.8rem; width:70px;">
+                    <button type="submit" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.7rem;">💾</button>
+                </form>
+                <form method="POST" action="{{ url_for('delete_asprak') }}" onsubmit="return confirm('Hapus asprak {{ a.name }}?');">
+                    <input type="hidden" name="asprak_id" value="{{ a.id }}">
+                    <button type="submit" class="btn btn-danger" style="padding:0.25rem 0.5rem; font-size:0.7rem;">🗑</button>
                 </form>
             </div>
-            <!-- Edit/Tutup Modul -->
-            <div>
-                <h4 style="margin-bottom: 1rem; color: var(--primary); font-size: 0.95rem;">Edit & Status Modul</h4>
-                <form method="POST" action="{{ url_for('edit_module') }}" style="margin-bottom: 1rem;">
-                    <div class="form-group">
-                        <label>Pilih Modul</label>
-                        <select name="module_id" class="form-control" required onchange="updateEditForm(this)">
-                            <option value="" disabled selected>Pilih Modul...</option>
-                            {% for m in modules %}
-                                <option value="{{ m.id }}" data-name="{{ m.name }}" data-desc="{{ m.description }}" data-open="{{ m.is_open }}">
-                                    {{ m.name }} {% if m.is_open == 0 %}🔴 Tutup{% else %}🟢 Buka{% endif %}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Nama Modul</label>
-                        <input type="text" name="name" id="edit_name" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Instruksi / Deadline</label>
-                        <textarea name="description" id="edit_desc" class="form-control" rows="2"></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-secondary" style="width: 100%;">Simpan Perubahan</button>
-                </form>
-                
-                <form method="POST" action="{{ url_for('toggle_module_status') }}">
-                    <input type="hidden" name="module_id" id="toggle_module_id">
-                    <input type="hidden" name="current_status" id="toggle_current_status">
-                    <button type="submit" id="toggleBtn" class="btn" style="width: 100%; display:none; margin-top: 0.5rem;"></button>
-                </form>
-            </div>
+            {% endif %}
+            {% endfor %}
         </div>
     </div>
-    <script>
-        function updateEditForm(select) {
-            const option = select.options[select.selectedIndex];
-            document.getElementById('edit_name').value = option.getAttribute('data-name');
-            document.getElementById('edit_desc').value = option.getAttribute('data-desc') || '';
-            
-            const isOpen = option.getAttribute('data-open') === '1';
-            const toggleBtn = document.getElementById('toggleBtn');
-            document.getElementById('toggle_module_id').value = option.value;
-            document.getElementById('toggle_current_status').value = isOpen ? '1' : '0';
-            toggleBtn.style.display = 'block';
-            
-            if (isOpen) {
-                toggleBtn.innerText = '🛑 Tutup Pengumpulan';
-                toggleBtn.className = 'btn btn-danger';
-                toggleBtn.style.width = '100%';
-            } else {
-                toggleBtn.innerText = '✅ Buka Pengumpulan';
-                toggleBtn.className = 'btn btn-success';
-                toggleBtn.style.width = '100%';
-            }
-        }
-    </script>
-    {% endif %}
+</div>
 
-    <!-- ===================== DAFTAR PENGUMPULAN ===================== -->
-    <div class="card glass-panel">
-        <h3 class="card-title">📥 Modul Terkumpul</h3>
-        <div style="overflow-x: auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Waktu</th>
-                        <th>Kelompok</th>
-                        <th>Modul</th>
-                        <th>File</th>
-                        <th>Perwakilan</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for sub in submissions %}
-                    <tr>
-                        <td style="font-size: 0.85rem;">{{ sub.timestamp.split('.')[0] }}</td>
-                        <td>Kel. {{ sub.group_id }}</td>
-                        <td>{{ sub.module_name }}</td>
-                        <td>
-                            <a href="{{ url_for('download_file', name=sub.file_path) }}" target="_blank" style="color:var(--primary); font-weight:600; text-decoration:none;">📎 Download</a>
-                        </td>
-                        <td>{{ sub.submitter_name if sub.submitter_name else '—' }}</td>
-                        <td>
-                            <form method="POST" action="{{ url_for('delete_submission', id=sub.id) }}" onsubmit="return confirm('Yakin ingin mereset pengumpulan ini?');" style="display:inline;">
-                                <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Reset</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">Belum ada modul yang dikumpulkan.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<!-- Modul Management -->
+<div class="card glass-panel">
+    <h3 class="card-title">📋 Pengaturan Modul</h3>
+    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 2rem;">
+        <div>
+            <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">Tambah Modul Baru</h4>
+            <form method="POST" action="{{ url_for('add_module') }}">
+                <input type="hidden" name="course_id" value="{{ sel_course }}">
+                <div class="form-group"><label>Nama Modul</label><input type="text" name="name" class="form-control" placeholder="Contoh: Modul 2" required></div>
+                <div class="form-group"><label>Instruksi</label><textarea name="description" class="form-control" rows="2" placeholder="Deadline..."></textarea></div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">+ Tambah Modul</button>
+            </form>
+        </div>
+        <div>
+            <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">Edit & Status Modul</h4>
+            <form method="POST" action="{{ url_for('edit_module') }}" style="margin-bottom:0.75rem;">
+                <div class="form-group"><label>Pilih Modul</label>
+                    <select name="module_id" class="form-control" required onchange="updateEditForm(this)">
+                        <option value="" disabled selected>Pilih Modul...</option>
+                        {% for m in modules %}<option value="{{ m.id }}" data-name="{{ m.name }}" data-desc="{{ m.description }}" data-open="{{ m.is_open }}">{{ m.name }} {% if m.is_open == 0 %}🔴{% else %}🟢{% endif %}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group"><label>Nama</label><input type="text" name="name" id="edit_name" class="form-control" required></div>
+                <div class="form-group"><label>Instruksi</label><textarea name="description" id="edit_desc" class="form-control" rows="2"></textarea></div>
+                <button type="submit" class="btn btn-secondary" style="width:100%;">Simpan Perubahan</button>
+            </form>
+            <form method="POST" action="{{ url_for('toggle_module_status') }}">
+                <input type="hidden" name="module_id" id="toggle_module_id">
+                <input type="hidden" name="current_status" id="toggle_current_status">
+                <button type="submit" id="toggleBtn" class="btn" style="width:100%; display:none;"></button>
+            </form>
         </div>
     </div>
+</div>
+<script>
+function updateEditForm(s) {
+    var o = s.options[s.selectedIndex];
+    document.getElementById('edit_name').value = o.getAttribute('data-name');
+    document.getElementById('edit_desc').value = o.getAttribute('data-desc') || '';
+    var isOpen = o.getAttribute('data-open') === '1';
+    var tb = document.getElementById('toggleBtn');
+    document.getElementById('toggle_module_id').value = o.value;
+    document.getElementById('toggle_current_status').value = isOpen ? '1' : '0';
+    tb.style.display = 'block';
+    tb.innerText = isOpen ? '🛑 Tutup Pengumpulan' : '✅ Buka Pengumpulan';
+    tb.className = isOpen ? 'btn btn-danger' : 'btn btn-success';
+    tb.style.width = '100%';
+}
+</script>
+{% endif %}
 
-    <!-- ===================== PENILAIAN PRAKTIKAN ===================== -->
-    <div class="card glass-panel">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
-            <h3 class="card-title" style="margin-bottom: 0;">📝 Penilaian Praktikan</h3>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <a href="{{ url_for('export_excel') }}" class="btn btn-secondary" style="font-size: 0.85rem;">
-                    📥 Cetak Excel
-                </a>
-                <button type="submit" form="batchGradeForm" class="btn btn-primary" style="font-size: 0.85rem;">
-                    🚀 Simpan Semua Perubahan
-                </button>
-            </div>
+<!-- ========== PENGUMPULAN ========== -->
+<div class="card glass-panel">
+    <h3 class="card-title">📥 Modul Terkumpul</h3>
+    <div style="overflow-x:auto;"><table><thead><tr><th>Waktu</th><th>Kel</th><th>Modul</th><th>File</th><th>Perwakilan</th><th>Aksi</th></tr></thead><tbody>
+    {% for sub in submissions %}
+    <tr>
+        <td style="font-size:0.85rem;">{{ sub.timestamp.split('.')[0] }}</td><td>{{ sub.group_id }}</td><td>{{ sub.module_name }}</td>
+        <td><a href="{{ url_for('download_file', name=sub.file_path) }}" target="_blank" style="color:var(--primary); font-weight:600;">📎 Download</a></td>
+        <td>{{ sub.submitter_name if sub.submitter_name else '—' }}</td>
+        <td><form method="POST" action="{{ url_for('delete_submission', id=sub.id) }}" onsubmit="return confirm('Reset?');" style="display:inline;"><button type="submit" class="btn btn-danger" style="padding:0.25rem 0.6rem; font-size:0.75rem;">Reset</button></form></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">Belum ada modul dikumpulkan.</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+</div>
+
+<!-- ========== PENILAIAN ========== -->
+<div class="card glass-panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+        <h3 class="card-title" style="margin-bottom:0;">📝 Penilaian Praktikan</h3>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <a href="{{ url_for('export_excel', course_id=sel_course) }}" class="btn btn-secondary" style="font-size:0.85rem;">📥 Cetak Excel</a>
+            <button type="submit" form="batchGradeForm" class="btn btn-primary" style="font-size:0.85rem;">🚀 Simpan Semua</button>
         </div>
-        
-        <form id="batchGradeForm" method="POST" action="{{ url_for('asprak_grade_batch') }}">
-            <div style="overflow-x: auto; position: relative;">
-                <table class="grade-table">
-                    <thead>
-                        <tr>
-                            <th>Kel.</th>
-                            <th>Nama Praktikan</th>
-                            {% for m in modules %}
-                                <th style="text-align:center;">{{ m.name }}<br><small style="font-weight: 400; opacity: 0.7;">(TP / Prak / Modul / Buku)</small></th>
-                            {% endfor %}
-                            <th style="text-align:center;">Total</th>
-                            <th style="text-align:center;">Huruf</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for p in praktikans %}
-                        <tr>
-                            <td style="font-weight: 600; color: var(--text-muted); font-size: 0.85rem;">{{ p.group_id }}</td>
-                            <td>
-                                <input type="text" name="praktikan_name_{{ p.id }}" value="{{ p.name }}" class="form-control" style="border: 1px solid transparent; background: transparent; font-weight: 600; padding: 0.3rem 0.5rem; width: 100%; min-width: 120px; color: var(--text-main);" title="Klik untuk mengedit nama">
-                            </td>
-                            
-                            {% for m in modules %}
-                            {% set g = p.grades.get(m.id, {'tp_score': 0, 'praktikum_score': 0, 'modul_score': 0, 'pembukuan_score': 0}) %}
-                            <td style="min-width: 250px; text-align:center;">
-                                <div style="display: flex; gap: 0.2rem; justify-content: center; align-items: center;">
-                                    <input type="number" name="tp_score_{{ p.id }}_{{ m.id }}" value="{{ g.tp_score }}" class="form-control" style="width: 45px; padding: 0.25rem; text-align: center; font-size: 0.8rem;" title="TP" min="0" max="100">
-                                    <input type="number" name="praktikum_score_{{ p.id }}_{{ m.id }}" value="{{ g.praktikum_score }}" class="form-control" style="width: 45px; padding: 0.25rem; text-align: center; font-size: 0.8rem;" title="Prak" min="0" max="100">
-                                    <input type="number" name="modul_score_{{ p.id }}_{{ m.id }}" value="{{ g.modul_score }}" class="form-control" style="width: 45px; padding: 0.25rem; text-align: center; font-size: 0.8rem;" title="Modul" min="0" max="100">
-                                    <input type="number" name="pembukuan_score_{{ p.id }}_{{ m.id }}" value="{{ g.pembukuan_score }}" class="form-control" style="width: 45px; padding: 0.25rem; text-align: center; font-size: 0.8rem; border-color: var(--secondary);" title="Pembukuan" min="0" max="100">
-                                </div>
-                            </td>
-                            {% endfor %}
-                            
-                            <!-- Total -->
-                            <td style="text-align:center; font-weight: 700; font-size: 1rem;">
-                                {{ p.total }}
-                            </td>
-                            <!-- Huruf Kelulusan -->
-                            <td style="text-align:center;">
-                                {% if p.letter in ('A', 'B+', 'B') %}
-                                    <span style="background: var(--success-bg); color: var(--success); padding: 0.2rem 0.6rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem;">{{ p.letter }}</span>
-                                {% elif p.letter in ('D', 'E') %}
-                                    <span style="background: var(--danger-bg); color: var(--danger); padding: 0.2rem 0.6rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem;">{{ p.letter }}</span>
-                                {% else %}
-                                    <span style="background: var(--primary-light); color: var(--primary); padding: 0.2rem 0.6rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem;">{{ p.letter }}</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </form>
     </div>
+    <form id="batchGradeForm" method="POST" action="{{ url_for('asprak_grade_batch') }}">
+        <input type="hidden" name="course_id" value="{{ sel_course }}">
+        <div style="overflow-x:auto; position:relative;"><table class="grade-table"><thead><tr>
+            <th>Kel.</th><th>Nama Praktikan</th>
+            {% for m in modules %}<th style="text-align:center;">{{ m.name }}<br><small style="font-weight:400; opacity:0.7;">(TP/Prak/Modul/Buku)</small></th>{% endfor %}
+            <th style="text-align:center;">Total</th><th style="text-align:center;">Huruf</th>
+        </tr></thead><tbody>
+        {% for p in praktikans %}
+        <tr>
+            <td style="font-weight:600; color:var(--text-muted); font-size:0.85rem;">{{ p.group_id }}</td>
+            <td><input type="text" name="praktikan_name_{{ p.id }}" value="{{ p.name }}" class="form-control" style="border:1px solid transparent; background:transparent; font-weight:600; padding:0.3rem 0.5rem; width:100%; min-width:120px; color:var(--text-main);"></td>
+            {% for m in modules %}
+            {% set g = p.grades.get(m.id, {'tp_score':0,'praktikum_score':0,'modul_score':0,'pembukuan_score':0}) %}
+            <td style="min-width:250px; text-align:center;"><div style="display:flex; gap:0.2rem; justify-content:center;">
+                <input type="number" name="tp_score_{{ p.id }}_{{ m.id }}" value="{{ g.tp_score }}" class="form-control" style="width:45px; padding:0.25rem; text-align:center; font-size:0.8rem;" min="0" max="100">
+                <input type="number" name="praktikum_score_{{ p.id }}_{{ m.id }}" value="{{ g.praktikum_score }}" class="form-control" style="width:45px; padding:0.25rem; text-align:center; font-size:0.8rem;" min="0" max="100">
+                <input type="number" name="modul_score_{{ p.id }}_{{ m.id }}" value="{{ g.modul_score }}" class="form-control" style="width:45px; padding:0.25rem; text-align:center; font-size:0.8rem;" min="0" max="100">
+                <input type="number" name="pembukuan_score_{{ p.id }}_{{ m.id }}" value="{{ g.pembukuan_score }}" class="form-control" style="width:45px; padding:0.25rem; text-align:center; font-size:0.8rem; border-color:var(--secondary);" min="0" max="100">
+            </div></td>
+            {% endfor %}
+            <td style="text-align:center; font-weight:700; font-size:1rem;">{{ p.total }}</td>
+            <td style="text-align:center;">
+                {% if p.letter in ('A','B+','B') %}<span style="background:var(--success-bg); color:var(--success); padding:0.2rem 0.6rem; border-radius:6px; font-weight:700;">{{ p.letter }}</span>
+                {% elif p.letter in ('D','E') %}<span style="background:var(--danger-bg); color:var(--danger); padding:0.2rem 0.6rem; border-radius:6px; font-weight:700;">{{ p.letter }}</span>
+                {% else %}<span style="background:var(--primary-light); color:var(--primary); padding:0.2rem 0.6rem; border-radius:6px; font-weight:700;">{{ p.letter }}</span>{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody></table></div>
+    </form>
+</div>
 
 </div>
 {% endblock %}

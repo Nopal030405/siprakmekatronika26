@@ -11,14 +11,27 @@ def get_db():
 def init_db():
     conn = get_db()
     c = conn.cursor()
+    
+    # Courses table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS courses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT
+        )
+    ''')
+    
     # Users table
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            role TEXT NOT NULL, -- 'ASPRAK' or 'PRAKTIKAN'
+            role TEXT NOT NULL,
             group_id INTEGER,
-            password TEXT -- for ASPRAK
+            password TEXT,
+            course_id INTEGER,
+            is_admin INTEGER DEFAULT 0,
+            FOREIGN KEY(course_id) REFERENCES courses(id)
         )
     ''')
     
@@ -28,7 +41,9 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             description TEXT,
-            is_open INTEGER DEFAULT 1
+            is_open INTEGER DEFAULT 1,
+            course_id INTEGER,
+            FOREIGN KEY(course_id) REFERENCES courses(id)
         )
     ''')
     
@@ -65,55 +80,57 @@ def init_db():
         )
     ''')
 
-    # Seeding
-    # Clear existing users to reset to image specifications
+    # ========================
+    # SEEDING
+    # ========================
     c.execute("DELETE FROM users")
     
-    # 4 Asprak from image
-    aspraks = [
-        ('nopal', 'ASPRAK', 0, 'pass1'), # Asprak 1 (Peach)
-        ('afrian', 'ASPRAK', 0, 'pass2'), # Asprak 2 (Yellow)
-        ('aza', 'ASPRAK', 0, 'pass3'),    # Asprak 3 (Green)
-        ('asad', 'ASPRAK', 0, 'pass4')     # Asprak 4 (Blue)
-    ]
-    c.executemany("INSERT INTO users (name, role, group_id, password) VALUES (?, ?, ?, ?)", aspraks)
+    # Ensure course "Sistem Kontrol" exists
+    c.execute("SELECT id FROM courses WHERE name='Sistem Kontrol'")
+    course = c.fetchone()
+    if not course:
+        c.execute("INSERT INTO courses (name, description) VALUES (?, ?)", ('Sistem Kontrol', 'Praktikum Sistem Kontrol Mekatronika 2026'))
+        course_id = c.lastrowid
+    else:
+        course_id = course[0]
     
-    # Praktikan Mapping from image
-    # Format: (Name, GroupID)
+    # Admin (Naufal) — is_admin=1, course_id=course_id (also asprak for Sistem Kontrol)
+    c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin) VALUES (?, ?, ?, ?, ?, ?)",
+              ('naufal', 'ASPRAK', 0, 'admin123', course_id, 1))
+    
+    # Regular Aspraks for Sistem Kontrol
+    aspraks = [
+        ('afrian', 'ASPRAK', 0, 'pass2', course_id, 0),
+        ('aza', 'ASPRAK', 0, 'pass3', course_id, 0),
+        ('asad', 'ASPRAK', 0, 'pass4', course_id, 0),
+    ]
+    c.executemany("INSERT INTO users (name, role, group_id, password, course_id, is_admin) VALUES (?, ?, ?, ?, ?, ?)", aspraks)
+    
+    # Praktikan for Sistem Kontrol
     praktikan_data = [
-        # Kel 1 (Nopal)
         ('Lutfi', 1), ('Freya', 1), ('Dodi', 1),
-        # Kel 2 (Afrian)
         ('Resi', 2), ('Iqbal', 2), ('Fajar madiun', 2),
-        # Kel 3 (Aza)
         ('Anis', 3), ('fajar nganjuk', 3), ('erna', 3),
-        # Kel 4 (Asad)
         ('Mufti', 4), ('Fadil', 4), ('Bahrul', 4),
-        # Kel 5 (Aza)
         ('Ival', 5), ('Wisnu', 5), ('Devan', 5),
-        # Kel 6 (Nopal)
         ('Gita', 6), ('Aril', 6), ('Sindu', 6),
-        # Kel 7 (Nopal)
         ('Nopal22', 7), ('Septy', 7), ('Sodiq', 7),
-        # Kel 8 (Afrian)
         ('Imdad', 8), ('Akbar', 8), ('Naila', 8),
-        # Kel 9 (Aza)
         ('Afrizal', 9), ('Haqqi', 9), ('Bagus', 9),
-        # Kel 10 (Asad)
         ('Danang', 10), ('Ihsan', 10), ('tika', 10),
-        # Kel 11 (Afrian)
         ('Hapids', 11), ('Bahril', 11), ('Zikro', 11),
-        # Kel 12 (Asad)
-        ('Lazuardi', 12), ('Sahroni', 12), ('Karim', 12), ('Darma', 12)
+        ('Lazuardi', 12), ('Sahroni', 12), ('Karim', 12), ('Darma', 12),
     ]
     
     for name, group_id in praktikan_data:
-        c.execute("INSERT INTO users (name, role, group_id, password) VALUES (?, ?, ?, ?)", (name, 'PRAKTIKAN', group_id, None))
+        c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin) VALUES (?, ?, ?, ?, ?, ?)",
+                  (name, 'PRAKTIKAN', group_id, None, course_id, 0))
         
-    # Ensure Modul 1 exists if fresh
-    c.execute("SELECT COUNT(*) FROM modules")
+    # Ensure Modul 1 exists for Sistem Kontrol
+    c.execute("SELECT COUNT(*) FROM modules WHERE course_id=?", (course_id,))
     if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO modules (name, description, is_open) VALUES (?, ?, ?)", ('Modul 1', 'Silakan kumpulkan Modul 1.', 1))
+        c.execute("INSERT INTO modules (name, description, is_open, course_id) VALUES (?, ?, ?, ?)",
+                  ('Modul 1', 'Silakan kumpulkan Modul 1.', 1, course_id))
         
     conn.commit()
     conn.close()
@@ -122,21 +139,27 @@ def migrate():
     """Simple migration to add columns if they don't exist."""
     conn = get_db()
     c = conn.cursor()
-    # Add description if not exist
-    try:
-        c.execute("ALTER TABLE modules ADD COLUMN description TEXT")
-    except sqlite3.OperationalError:
-        pass
-    # Add is_open if not exist
-    try:
-        c.execute("ALTER TABLE modules ADD COLUMN is_open INTEGER DEFAULT 1")
-    except sqlite3.OperationalError:
-        pass
-    # Add pembukuan_score if not exist
-    try:
-        c.execute("ALTER TABLE grades ADD COLUMN pembukuan_score INTEGER DEFAULT 0")
-    except sqlite3.OperationalError:
-        pass
+    
+    # Courses table
+    c.execute('''CREATE TABLE IF NOT EXISTS courses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, description TEXT)''')
+    
+    # Add columns if not exist
+    migrations = [
+        ("modules", "description", "TEXT"),
+        ("modules", "is_open", "INTEGER DEFAULT 1"),
+        ("modules", "course_id", "INTEGER"),
+        ("grades", "pembukuan_score", "INTEGER DEFAULT 0"),
+        ("users", "course_id", "INTEGER"),
+        ("users", "is_admin", "INTEGER DEFAULT 0"),
+    ]
+    
+    for table, column, col_type in migrations:
+        try:
+            c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+        except sqlite3.OperationalError:
+            pass
+    
     conn.commit()
     conn.close()
 
@@ -144,4 +167,3 @@ if __name__ == '__main__':
     init_db()
     migrate()
     print("Database initialized and migrated successfully.")
-
