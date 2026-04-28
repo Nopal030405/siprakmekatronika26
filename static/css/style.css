@@ -510,6 +510,133 @@ tbody tr:last-child td {
 }
 
 /* ============================
+   FOOTER
+   ============================ */
+.site-footer {
+    margin-top: 3rem;
+    padding: 2rem 0 1rem;
+    border-top: 1px solid var(--table-border);
+    background: var(--bg-surface);
+}
+
+.footer-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3rem;
+    flex-wrap: wrap;
+}
+
+.footer-dev, .footer-sponsor {
+    text-align: center;
+}
+
+.footer-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+}
+
+.footer-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    margin-bottom: 0.6rem;
+}
+
+.footer-socials {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.social-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    transition: var(--transition);
+    color: white;
+    text-decoration: none;
+}
+
+.social-ig {
+    background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+}
+
+.social-wa {
+    background: #25D366;
+}
+
+.social-gh {
+    background: #333;
+}
+
+[data-theme="dark"] .social-gh {
+    background: #6e7681;
+}
+
+.social-link:hover {
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.footer-divider {
+    width: 1px;
+    height: 80px;
+    background: var(--table-border);
+}
+
+.sponsor-logo {
+    width: 100px;
+    height: auto;
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.5rem;
+    transition: var(--transition);
+}
+
+.sponsor-link:hover .sponsor-logo {
+    transform: scale(1.05);
+}
+
+.shopee-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--radius-sm);
+    background: #EE4D2D;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.shopee-btn:hover {
+    background: #D73211;
+    transform: translateY(-1px);
+}
+
+.footer-copy {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--table-border);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding-bottom: 0.5rem;
+}
+
+/* ============================
    RESPONSIVE
    ============================ */
 @media (max-width: 768px) {
@@ -629,6 +756,37 @@ tbody tr:last-child td {
 
     [data-theme="dark"] .theme-toggle__thumb {
         left: 19px;
+    }
+
+    /* Footer mobile */
+    .footer-container {
+        flex-direction: column;
+        gap: 1.5rem;
+        padding: 0 1rem;
+    }
+
+    .footer-divider {
+        width: 60px;
+        height: 1px;
+    }
+
+    .site-footer {
+        margin-top: 2rem;
+        padding: 1.5rem 0 0.75rem;
+    }
+
+    .sponsor-logo {
+        width: 80px;
+    }
+
+    .social-link {
+        width: 32px;
+        height: 32px;
+    }
+
+    .social-link svg {
+        width: 15px;
+        height: 15px;
     }
 }
 
