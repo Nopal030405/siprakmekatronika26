@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="margin-bottom: 1.5rem;">
+    <h2 style="font-size: 1.8rem; color: var(--primary);">🔍 Viewer Dashboard <span style="font-size:0.7rem; background:var(--primary-light); color:var(--primary); padding:0.15rem 0.5rem; border-radius:999px; font-weight:600;">READ-ONLY</span></h2>
+    <form method="GET" action="{{ url_for('viewer_dashboard') }}" style="display:flex; align-items:center; gap:0.75rem; margin-top:0.75rem; flex-wrap:wrap;">
+        <label style="font-weight:600; color:var(--text-muted); font-size:0.85rem;">Mata Kuliah:</label>
+        <select name="course_id" class="form-control" style="width:auto; min-width:200px;" onchange="this.form.submit()">
+            {% for c in courses %}
+            <option value="{{ c.id }}" {% if c.id == sel_course %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="grid" style="grid-template-columns: 1fr;">
+
+<!-- Pengumpulan -->
+<div class="card glass-panel">
+    <h3 class="card-title">📥 Modul Terkumpul</h3>
+    <div style="overflow-x:auto;"><table><thead><tr><th>Waktu</th><th>Kel</th><th>Modul</th><th>Perwakilan</th></tr></thead><tbody>
+    {% for sub in submissions %}
+    <tr>
+        <td style="font-size:0.85rem;">{{ sub.timestamp.split('.')[0] }}</td>
+        <td>{{ sub.group_id }}</td><td>{{ sub.module_name }}</td>
+        <td>{{ sub.submitter_name if sub.submitter_name else '—' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:2rem;">Belum ada modul dikumpulkan.</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+</div>
+
+<!-- Penilaian (Read-Only) -->
+<div class="card glass-panel">
+    <h3 class="card-title">📝 Rekap Nilai Praktikan</h3>
+    <div style="overflow-x:auto;"><table class="grade-table"><thead><tr>
+        <th>Kel.</th><th>Nama</th>
+        {% for m in modules %}<th style="text-align:center;">{{ m.name }}<br><small style="font-weight:400; opacity:0.7;">(TP/Prak/Modul)</small></th>{% endfor %}
+        <th style="text-align:center;">Buku</th>
+        <th style="text-align:center;">Total</th><th style="text-align:center;">Huruf</th>
+    </tr></thead><tbody>
+    {% for p in praktikans %}
+    <tr>
+        <td style="font-weight:600; color:var(--text-muted); font-size:0.85rem;">{{ p.group_id }}</td>
+        <td style="font-weight:600;">{{ p.name }}</td>
+        {% for m in modules %}
+        {% set g = p.grades.get(m.id, {'tp_score':0,'praktikum_score':0,'modul_score':0}) %}
+        <td style="text-align:center; font-size:0.85rem;">
+            {{ g.tp_score|default(0) }} / {{ g.praktikum_score|default(0) }} / {{ g.modul_score|default(0) }}
+        </td>
+        {% endfor %}
+        <td style="text-align:center; font-weight:600;">{{ p.pembukuan_score|default(0) }}</td>
+        <td style="text-align:center; font-weight:700; font-size:1rem;">{{ p.total }}</td>
+        <td style="text-align:center;">
+            {% if p.letter in ('A','B+','B') %}<span style="background:var(--success-bg); color:var(--success); padding:0.2rem 0.6rem; border-radius:6px; font-weight:700;">{{ p.letter }}</span>
+            {% elif p.letter in ('D','E') %}<span style="background:var(--danger-bg); color:var(--danger); padding:0.2rem 0.6rem; border-radius:6px; font-weight:700;">{{ p.letter }}</span>
+            {% else %}<span style="background:var(--primary-light); color:var(--primary); padding:0.2rem 0.6rem; border-radius:6px; font-weight:700;">{{ p.letter }}</span>{% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody></table></div>
+
+    <!-- Grade Legend -->
+    <div style="margin-top:1.25rem; padding:1rem 1.25rem; background:var(--bg-card); border:1px solid var(--border); border-radius:10px;">
+        <h4 style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem;">📊 Panduan Konversi Nilai</h4>
+        <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
+            {% for letter, range, color in grade_legend %}
+            <span style="padding:0.25rem 0.6rem; border-radius:6px; font-size:0.8rem; font-weight:600; background:var(--bg-main); border:1px solid var(--border);">
+                <span style="color:{{ color }};">{{ letter }}</span> = {{ range }}
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+</div>
+{% endblock %}

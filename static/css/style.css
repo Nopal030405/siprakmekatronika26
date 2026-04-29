@@ -640,6 +640,66 @@ tbody tr:last-child td {
 }
 
 /* ============================
+   MANAGEMENT LIST & BARS
+   ============================ */
+.management-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 1rem 0;
+}
+
+.management-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--surface-border);
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+}
+
+.management-bar:hover {
+    border-color: var(--primary);
+    background: var(--bg-surface-hover);
+    transform: translateX(4px);
+}
+
+.management-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.management-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 120px;
+}
+
+.management-course {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--primary-light);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.management-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* ============================
    RESPONSIVE
    ============================ */
 @media (max-width: 768px) {
@@ -791,6 +851,45 @@ tbody tr:last-child td {
         width: 15px;
         height: 15px;
     }
+
+    /* Management Bar Mobile */
+    .management-bar {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 1rem;
+        gap: 1rem;
+    }
+    
+    .management-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.4rem;
+    }
+    
+    .management-actions {
+        justify-content: space-between;
+        flex-wrap: wrap;
+        border-top: 1px solid var(--table-border);
+        padding-top: 0.75rem;
+    }
+
+    .management-name {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    /* Scroll horizontal tables on mobile */
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: var(--radius-sm);
+        margin-bottom: 1rem;
+    }
+
+    .grade-table {
+        min-width: 800px;
+    }
 }
 
 /* Extra small screens (phones < 400px) */
@@ -798,13 +897,15 @@ tbody tr:last-child td {
     .container {
         padding: 0.5rem;
     }
-
     header h1 {
         font-size: 0.95rem;
     }
-
     .grade-table input[type="number"] {
         width: 32px !important;
         font-size: 0.65rem !important;
+    }
+    .mobile-border-none {
+        border: none !important;
+        padding-left: 0 !important;
     }
 }

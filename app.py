@@ -37,14 +37,25 @@ def calculate_module_avg(g):
     modul = int(g.get('modul_score',0) or 0)
     return round((tp+prak+modul)/3, 1)
 
-def calculate_total(grades_dict, modules):
-    if not modules or not grades_dict: return 0
-    avgs, pbk = [], 0
+def calculate_total(grades_dict, modules, pembukuan_score=0):
+    if not modules: return 0
+    avgs = []
     for m in modules:
         g = grades_dict.get(m['id'], {})
         avgs.append(calculate_module_avg(g))
-        pbk += int(g.get('pembukuan_score',0) or 0)
-    return round(min((sum(avgs)/len(avgs))+(pbk/len(modules)), 100), 1)
+    pbk = int(pembukuan_score or 0)
+    return round(min((sum(avgs) + pbk) / (len(avgs) + 1), 100), 1)
+
+GRADE_LEGEND = [
+    ('A', '≥ 85', 'var(--success)'),
+    ('B+', '80–84', 'var(--success)'),
+    ('B', '75–79', 'var(--success)'),
+    ('C+', '70–74', 'var(--primary)'),
+    ('C', '60–69', 'var(--primary)'),
+    ('D+', '50–59', 'var(--danger)'),
+    ('D', '40–49', 'var(--danger)'),
+    ('E', '< 40', 'var(--danger)'),
+]
 
 def get_allowed_groups(asprak_name, course_id):
     conn = get_db()
@@ -88,12 +99,14 @@ def praktikan_dashboard():
     conn = get_db()
     courses = conn.execute('SELECT * FROM courses').fetchall()
     sel_course = request.args.get('course_id', type=int)
-    modules, groups = [], []
+    modules, groups, drive_link = [], [], None
     if sel_course:
         modules = conn.execute('SELECT * FROM modules WHERE course_id=?', (sel_course,)).fetchall()
         groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id', (sel_course,)).fetchall()
+        course_row = conn.execute('SELECT drive_link FROM courses WHERE id=?', (sel_course,)).fetchone()
+        drive_link = course_row['drive_link'] if course_row else None
     conn.close()
-    return render_template('praktikan.html', courses=courses, modules=modules, groups=groups, sel_course=sel_course)
+    return render_template('praktikan.html', courses=courses, modules=modules, groups=groups, sel_course=sel_course, drive_link=drive_link)
 
 @app.route('/praktikan/submit', methods=['POST'])
 def praktikan_submit():
@@ -162,10 +175,12 @@ def asprak_dashboard():
     sel_course = request.args.get('course_id', type=int)
     if not sel_course:
         sel_course = user['course_id'] or (courses[0]['id'] if courses else None)
+    co_asprak = user['is_co_asprak'] == 1
     if not sel_course:
         conn.close()
         return render_template('asprak.html', modules=[], submissions=[], praktikans=[], courses=courses,
-                               sel_course=None, admin=admin, aspraks=[], calculate_module_avg=calculate_module_avg)
+                               sel_course=None, admin=admin, aspraks=[], calculate_module_avg=calculate_module_avg,
+                               grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=None)
     modules = conn.execute('SELECT * FROM modules WHERE course_id=?', (sel_course,)).fetchall()
     allowed = get_allowed_groups(asprak_name, sel_course)
     if not allowed:
@@ -176,7 +191,8 @@ def asprak_dashboard():
             aspraks = conn2.execute('SELECT * FROM users WHERE role="ASPRAK" AND course_id=?', (sel_course,)).fetchall()
             conn2.close()
         return render_template('asprak.html', modules=modules, submissions=[], praktikans=[], courses=courses,
-                               sel_course=sel_course, admin=admin, aspraks=aspraks, calculate_module_avg=calculate_module_avg)
+                               sel_course=sel_course, admin=admin, aspraks=aspraks, calculate_module_avg=calculate_module_avg,
+                               grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=None)
     ph = ','.join('?' for _ in allowed)
     subs_raw = conn.execute(f'''SELECT s.*, m.name as module_name, u.name as submitter_name
         FROM submissions s JOIN modules m ON s.module_id=m.id LEFT JOIN users u ON s.submitted_by=u.id
@@ -196,16 +212,22 @@ def asprak_dashboard():
         pd = dict(p)
         gr = conn.execute('SELECT * FROM grades WHERE praktikan_id=?', (p['id'],)).fetchall()
         pd['grades'] = {g['module_id']: dict(g) for g in gr}
-        pd['total'] = calculate_total(pd['grades'], ml)
+        pd['total'] = calculate_total(pd['grades'], ml, pd.get('pembukuan_score', 0))
         pd['letter'] = get_letter_grade(pd['total'])
         praktikans.append(pd)
     aspraks = []
     if admin:
-        aspraks = conn.execute('SELECT * FROM users WHERE role="ASPRAK" AND course_id=?', (sel_course,)).fetchall()
+        aspraks = conn.execute('SELECT * FROM users WHERE role="ASPRAK" ORDER BY name').fetchall()
+    all_groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id', (sel_course,)).fetchall()
+    all_groups = [g['group_id'] for g in all_groups]
+    # Get drive link for selected course
+    course_row = conn.execute('SELECT drive_link FROM courses WHERE id=?', (sel_course,)).fetchone()
+    course_drive_link = course_row['drive_link'] if course_row else None
     conn.close()
     return render_template('asprak.html', modules=modules, submissions=submissions, praktikans=praktikans,
                            courses=courses, sel_course=sel_course, admin=admin, aspraks=aspraks,
-                           calculate_module_avg=calculate_module_avg)
+                           calculate_module_avg=calculate_module_avg, grade_legend=GRADE_LEGEND,
+                           all_groups=all_groups, is_co_asprak=co_asprak, course_drive_link=course_drive_link)
 
 # ======== GRADE BATCH ========
 @app.route('/asprak/grade_batch', methods=['POST'])
@@ -218,19 +240,21 @@ def asprak_grade_batch():
         if key.startswith('praktikan_name_'):
             pid = key.split('_')[2]
             if val: conn.execute('UPDATE users SET name=? WHERE id=?', (val, pid))
+        if key.startswith('pembukuan_'):
+            pid = key.split('_')[1]
+            conn.execute('UPDATE users SET pembukuan_score=? WHERE id=?', (val or 0, pid))
         if key.startswith('tp_score_'):
             parts = key.split('_'); pid, mid = parts[2], parts[3]
             tp = val or 0
             prak = request.form.get(f'praktikum_score_{pid}_{mid}', 0)
             modul = request.form.get(f'modul_score_{pid}_{mid}', 0)
-            pbk = request.form.get(f'pembukuan_score_{pid}_{mid}', 0)
             ex = conn.execute('SELECT id FROM grades WHERE praktikan_id=? AND module_id=?', (pid, mid)).fetchone()
             if ex:
-                conn.execute('UPDATE grades SET tp_score=?, praktikum_score=?, modul_score=?, pembukuan_score=?, graded_by=? WHERE id=?',
-                             (tp, prak, modul, pbk, gby, ex['id']))
+                conn.execute('UPDATE grades SET tp_score=?, praktikum_score=?, modul_score=?, graded_by=? WHERE id=?',
+                             (tp, prak, modul, gby, ex['id']))
             else:
-                conn.execute('INSERT INTO grades (praktikan_id, module_id, tp_score, praktikum_score, modul_score, pembukuan_score, graded_by) VALUES (?,?,?,?,?,?,?)',
-                             (pid, mid, tp, prak, modul, pbk, gby))
+                conn.execute('INSERT INTO grades (praktikan_id, module_id, tp_score, praktikum_score, modul_score, graded_by) VALUES (?,?,?,?,?,?)',
+                             (pid, mid, tp, prak, modul, gby))
     conn.commit(); conn.close()
     flash('Semua perubahan berhasil disimpan!', 'success')
     course_id = request.form.get('course_id', '')
@@ -262,7 +286,7 @@ def export_excel():
         pd = dict(p)
         gr = conn.execute('SELECT * FROM grades WHERE praktikan_id=?', (p['id'],)).fetchall()
         pd['grades'] = {g['module_id']: dict(g) for g in gr}
-        pd['total'] = calculate_total(pd['grades'], ml)
+        pd['total'] = calculate_total(pd['grades'], ml, pd.get('pembukuan_score', 0))
         pd['letter'] = get_letter_grade(pd['total'])
         data.append(pd)
     conn.close()
@@ -273,8 +297,8 @@ def export_excel():
     ct = Alignment(horizontal='center', vertical='center')
     headers = ['No', 'Nama', 'Kel']
     for m in ml:
-        headers.extend([f'{m["name"]} TP', f'{m["name"]} Prak', f'{m["name"]} Modul', f'{m["name"]} Buku', f'{m["name"]} Status'])
-    headers.extend(['Total', 'Huruf'])
+        headers.extend([f'{m["name"]} TP', f'{m["name"]} Prak', f'{m["name"]} Modul', f'{m["name"]} Status'])
+    headers.extend(['Pembukuan', 'Total', 'Huruf'])
     for c, h in enumerate(headers, 1):
         cell = ws.cell(row=1, column=c, value=h); cell.font = hf; cell.fill = hfill; cell.alignment = ct; cell.border = tb
     for ri, p in enumerate(data, 2):
@@ -284,10 +308,11 @@ def export_excel():
         ci = 4
         for m in ml:
             g = p['grades'].get(m['id'], {})
-            for v in [int(g.get('tp_score',0) or 0), int(g.get('praktikum_score',0) or 0), int(g.get('modul_score',0) or 0), int(g.get('pembukuan_score',0) or 0)]:
+            for v in [int(g.get('tp_score',0) or 0), int(g.get('praktikum_score',0) or 0), int(g.get('modul_score',0) or 0)]:
                 ws.cell(row=ri, column=ci, value=v).border = tb; ci += 1
             st = '✅' if (m['id'], p['group_id']) in ss else '❌'
             ws.cell(row=ri, column=ci, value=st).border = tb; ci += 1
+        ws.cell(row=ri, column=ci, value=int(p.get('pembukuan_score',0) or 0)).border = tb; ci += 1
         ws.cell(row=ri, column=ci, value=p['total']).border = tb; ci += 1
         ws.cell(row=ri, column=ci, value=p['letter']).border = tb
     for col in ws.columns:
@@ -319,14 +344,15 @@ def add_asprak():
     name = request.form.get('asprak_name', '').strip()
     pwd = request.form.get('asprak_password', '').strip()
     cid = request.form.get('asprak_course_id', type=int)
+    is_co = 1 if request.form.get('is_co_asprak') else 0
     if name and pwd and cid:
         conn = get_db()
         ex = conn.execute('SELECT id FROM users WHERE LOWER(name)=LOWER(?) AND role="ASPRAK" AND course_id=?', (name, cid)).fetchone()
         if ex:
             flash(f'Asprak "{name}" sudah ada di MK ini', 'error')
         else:
-            conn.execute('INSERT INTO users (name, role, group_id, password, course_id, is_admin) VALUES (?,?,?,?,?,?)',
-                         (name, 'ASPRAK', 0, pwd, cid, 0))
+            conn.execute('INSERT INTO users (name, role, group_id, password, course_id, is_admin, is_co_asprak) VALUES (?,?,?,?,?,?,?)',
+                         (name, 'ASPRAK', 0, pwd, cid, 0, is_co))
             conn.commit()
             flash(f'Asprak "{name}" berhasil ditambahkan!', 'success')
         conn.close()
@@ -361,7 +387,8 @@ def delete_asprak():
     conn.execute('DELETE FROM users WHERE id=?', (aid,))
     conn.commit(); conn.close()
     flash('Asprak berhasil dihapus', 'success')
-    return redirect(url_for('asprak_dashboard'))
+    cid = request.form.get('course_id')
+    return redirect(url_for('asprak_dashboard', course_id=cid))
 
 # ======== MODULE MANAGEMENT ========
 @app.route('/asprak/module/toggle_status', methods=['POST'])
@@ -416,6 +443,136 @@ def delete_submission(id):
 @app.route('/uploads/<name>')
 def download_file(name):
     return send_from_directory(app.config['UPLOAD_FOLDER'], name)
+
+# ======== PRAKTIKAN MANAGEMENT (ALL ASPRAK) ========
+@app.route('/asprak/praktikan/add', methods=['POST'])
+def add_praktikan():
+    if 'role' not in session or session['role'] != 'ASPRAK':
+        return redirect(url_for('asprak_login'))
+    name = request.form.get('new_praktikan_name', '').strip()
+    gid = request.form.get('new_praktikan_group', type=int)
+    cid = request.form.get('course_id', type=int)
+    if name and gid and cid:
+        conn = get_db()
+        conn.execute('INSERT INTO users (name, role, group_id, password, course_id, is_admin, is_co_asprak, pembukuan_score) VALUES (?,?,?,?,?,?,?,?)',
+                     (name, 'PRAKTIKAN', gid, None, cid, 0, 0, 0))
+        conn.commit(); conn.close()
+        flash(f'Praktikan "{name}" berhasil ditambahkan ke Kel {gid}!', 'success')
+    return redirect(url_for('asprak_dashboard', course_id=cid))
+
+@app.route('/asprak/praktikan/edit_group', methods=['POST'])
+def edit_praktikan_group():
+    if 'role' not in session or session['role'] != 'ASPRAK':
+        return redirect(url_for('asprak_login'))
+    pid = request.form.get('praktikan_id', type=int)
+    new_gid = request.form.get('new_group_id', type=int)
+    cid = request.form.get('course_id', type=int)
+    if pid and new_gid:
+        conn = get_db()
+        conn.execute('UPDATE users SET group_id=? WHERE id=?', (new_gid, pid))
+        conn.commit(); conn.close()
+        flash('Kelompok praktikan berhasil diubah!', 'success')
+    return redirect(url_for('asprak_dashboard', course_id=cid))
+
+# ======== ADMIN: CO-ASPRAK TOGGLE ========
+@app.route('/admin/asprak/toggle_co', methods=['POST'])
+def toggle_co_asprak():
+    if not is_admin_user(session.get('user_id')):
+        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard'))
+    aid = request.form.get('asprak_id', type=int)
+    conn = get_db()
+    a = conn.execute('SELECT is_co_asprak FROM users WHERE id=?', (aid,)).fetchone()
+    if a:
+        nv = 0 if a['is_co_asprak'] else 1
+        conn.execute('UPDATE users SET is_co_asprak=? WHERE id=?', (nv, aid))
+        conn.commit()
+        flash(f'Status Co-Asprak berhasil {"diaktifkan" if nv else "dinonaktifkan"}!', 'success')
+    cid = request.form.get('course_id')
+    conn.close()
+    return redirect(url_for('asprak_dashboard', course_id=cid))
+
+# ======== ADMIN: ASSIGN ASPRAK TO COURSE ========
+@app.route('/admin/asprak/assign_course', methods=['POST'])
+def assign_asprak_course():
+    if not is_admin_user(session.get('user_id')):
+        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard'))
+    aid = request.form.get('asprak_id', type=int)
+    cid = request.form.get('new_course_id', type=int)
+    if aid and cid:
+        conn = get_db()
+        conn.execute('UPDATE users SET course_id=? WHERE id=?', (cid, aid))
+        conn.commit(); conn.close()
+        flash('Asprak berhasil dipindah ke praktikum baru!', 'success')
+    return redirect(url_for('asprak_dashboard', course_id=cid))
+
+# ======== CO-ASPRAK: SET DRIVE LINK ========
+@app.route('/asprak/set_drive_link', methods=['POST'])
+def set_drive_link():
+    if 'role' not in session or session['role'] != 'ASPRAK':
+        return redirect(url_for('asprak_login'))
+    conn = get_db()
+    user = conn.execute('SELECT * FROM users WHERE id=?', (session['user_id'],)).fetchone()
+    if not (user['is_co_asprak'] or user['is_admin']):
+        flash('Hanya Co-Asprak atau Admin yang dapat mengatur Drive folder', 'error')
+        conn.close()
+        return redirect(url_for('asprak_dashboard'))
+    cid = request.form.get('course_id', type=int)
+    link = request.form.get('drive_link', '').strip()
+    if cid:
+        conn.execute('UPDATE courses SET drive_link=? WHERE id=?', (link or None, cid))
+        conn.commit()
+        flash('Link Google Drive berhasil disimpan!' if link else 'Link Google Drive dihapus.', 'success')
+    conn.close()
+    return redirect(url_for('asprak_dashboard', course_id=cid))
+
+# ======== VIEWER ========
+@app.route('/viewer/login', methods=['GET', 'POST'])
+def viewer_login():
+    if 'role' in session and session['role'] == 'VIEWER':
+        return redirect(url_for('viewer_dashboard'))
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        password = request.form.get('password')
+        conn = get_db()
+        user = conn.execute('SELECT * FROM users WHERE role="VIEWER" AND LOWER(name)=LOWER(?) AND password=?', (name, password)).fetchone()
+        conn.close()
+        if user:
+            session['user_id'] = user['id']
+            session['role'] = 'VIEWER'
+            return redirect(url_for('viewer_dashboard'))
+        else:
+            flash('Login gagal', 'error')
+    return render_template('viewer_login.html')
+
+@app.route('/viewer')
+def viewer_dashboard():
+    if 'role' not in session or session['role'] != 'VIEWER':
+        return redirect(url_for('viewer_login'))
+    conn = get_db()
+    courses = conn.execute('SELECT * FROM courses').fetchall()
+    sel_course = request.args.get('course_id', type=int)
+    if not sel_course and courses:
+        sel_course = courses[0]['id']
+    if not sel_course:
+        conn.close()
+        return render_template('viewer.html', courses=courses, sel_course=None, modules=[], submissions=[], praktikans=[], grade_legend=GRADE_LEGEND, calculate_module_avg=calculate_module_avg)
+    modules = conn.execute('SELECT * FROM modules WHERE course_id=?', (sel_course,)).fetchall()
+    subs = conn.execute('''SELECT s.*, m.name as module_name, u.name as submitter_name
+        FROM submissions s JOIN modules m ON s.module_id=m.id LEFT JOIN users u ON s.submitted_by=u.id
+        WHERE m.course_id=? ORDER BY s.timestamp DESC''', (sel_course,)).fetchall()
+    submissions = [dict(s) for s in subs]
+    praks = conn.execute('SELECT * FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id, name', (sel_course,)).fetchall()
+    ml = [dict(m) for m in modules]
+    praktikans = []
+    for p in praks:
+        pd = dict(p)
+        gr = conn.execute('SELECT * FROM grades WHERE praktikan_id=?', (p['id'],)).fetchall()
+        pd['grades'] = {g['module_id']: dict(g) for g in gr}
+        pd['total'] = calculate_total(pd['grades'], ml, pd.get('pembukuan_score', 0))
+        pd['letter'] = get_letter_grade(pd['total'])
+        praktikans.append(pd)
+    conn.close()
+    return render_template('viewer.html', courses=courses, sel_course=sel_course, modules=modules, submissions=submissions, praktikans=praktikans, grade_legend=GRADE_LEGEND, calculate_module_avg=calculate_module_avg)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

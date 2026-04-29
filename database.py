@@ -17,7 +17,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS courses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            description TEXT
+            description TEXT,
+            drive_link TEXT
         )
     ''')
     
@@ -31,6 +32,8 @@ def init_db():
             password TEXT,
             course_id INTEGER,
             is_admin INTEGER DEFAULT 0,
+            is_co_asprak INTEGER DEFAULT 0,
+            pembukuan_score INTEGER DEFAULT 0,
             FOREIGN KEY(course_id) REFERENCES courses(id)
         )
     ''')
@@ -62,7 +65,7 @@ def init_db():
         )
     ''')
     
-    # Grades table
+    # Grades table (pembukuan_score kept for backward compat but no longer used per-module)
     c.execute('''
         CREATE TABLE IF NOT EXISTS grades (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,17 +97,21 @@ def init_db():
     else:
         course_id = course[0]
     
-    # Admin (Naufal) — is_admin=1, course_id=course_id (also asprak for Sistem Kontrol)
-    c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin) VALUES (?, ?, ?, ?, ?, ?)",
-              ('naufal', 'ASPRAK', 0, 'admin123', course_id, 1))
+    # Admin (Naufal) — is_admin=1
+    c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin, is_co_asprak, pembukuan_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+              ('naufal', 'ASPRAK', 0, 'admin123', course_id, 1, 0, 0))
     
     # Regular Aspraks for Sistem Kontrol
     aspraks = [
-        ('afrian', 'ASPRAK', 0, 'pass2', course_id, 0),
-        ('aza', 'ASPRAK', 0, 'pass3', course_id, 0),
-        ('asad', 'ASPRAK', 0, 'pass4', course_id, 0),
+        ('afrian', 'ASPRAK', 0, 'pass2', course_id, 0, 0, 0),
+        ('aza', 'ASPRAK', 0, 'pass3', course_id, 0, 0, 0),
+        ('asad', 'ASPRAK', 0, 'pass4', course_id, 0, 0, 0),
     ]
-    c.executemany("INSERT INTO users (name, role, group_id, password, course_id, is_admin) VALUES (?, ?, ?, ?, ?, ?)", aspraks)
+    c.executemany("INSERT INTO users (name, role, group_id, password, course_id, is_admin, is_co_asprak, pembukuan_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", aspraks)
+    
+    # Viewer account (read-only access for portfolio)
+    c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin, is_co_asprak, pembukuan_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+              ('viewer', 'VIEWER', 0, 'lihat123', None, 0, 0, 0))
     
     # Praktikan for Sistem Kontrol
     praktikan_data = [
@@ -123,8 +130,8 @@ def init_db():
     ]
     
     for name, group_id in praktikan_data:
-        c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin) VALUES (?, ?, ?, ?, ?, ?)",
-                  (name, 'PRAKTIKAN', group_id, None, course_id, 0))
+        c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin, is_co_asprak, pembukuan_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                  (name, 'PRAKTIKAN', group_id, None, course_id, 0, 0, 0))
         
     # Ensure Modul 1 exists for Sistem Kontrol
     c.execute("SELECT COUNT(*) FROM modules WHERE course_id=?", (course_id,))
@@ -152,6 +159,9 @@ def migrate():
         ("grades", "pembukuan_score", "INTEGER DEFAULT 0"),
         ("users", "course_id", "INTEGER"),
         ("users", "is_admin", "INTEGER DEFAULT 0"),
+        ("users", "is_co_asprak", "INTEGER DEFAULT 0"),
+        ("users", "pembukuan_score", "INTEGER DEFAULT 0"),
+        ("courses", "drive_link", "TEXT"),
     ]
     
     for table, column, col_type in migrations:
@@ -159,6 +169,12 @@ def migrate():
             c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
         except sqlite3.OperationalError:
             pass
+    
+    # Ensure viewer account exists
+    viewer = c.execute("SELECT id FROM users WHERE role='VIEWER'").fetchone()
+    if not viewer:
+        c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin) VALUES (?, ?, ?, ?, ?, ?)",
+                  ('viewer', 'VIEWER', 0, 'lihat123', None, 0))
     
     conn.commit()
     conn.close()
