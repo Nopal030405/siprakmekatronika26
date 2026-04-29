@@ -168,6 +168,10 @@ def asprak_dashboard():
         return redirect(url_for('asprak_login'))
     conn = get_db()
     user = conn.execute('SELECT * FROM users WHERE id=?', (session['user_id'],)).fetchone()
+    if not user:
+        conn.close()
+        session.clear()
+        return redirect(url_for('asprak_login'))
     asprak_name = user['name']
     admin = user['is_admin'] == 1
     courses = conn.execute('SELECT * FROM courses').fetchall()

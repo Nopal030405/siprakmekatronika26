@@ -2,7 +2,6 @@
 {% block content %}
 <div style="margin-bottom: 1.5rem;">
     <h2 style="font-size: 1.8rem; color: var(--primary);">Dashboard Asprak</h2>
-    <!-- Course Selector -->
     <form method="GET" action="{{ url_for('asprak_dashboard') }}" style="display:flex; align-items:center; gap:0.75rem; margin-top:0.75rem; flex-wrap:wrap;">
         <label style="font-weight:600; color:var(--text-muted); font-size:0.85rem;">Mata Kuliah:</label>
         <select name="course_id" class="form-control" style="width:auto; min-width:200px;" onchange="this.form.submit()">
@@ -15,288 +14,239 @@
 
 <div class="grid" style="grid-template-columns: 1fr;">
 
-<!-- ========== ADMIN PANEL ========== -->
-{% if admin %}
-<div class="card glass-panel" style="border-left: 3px solid var(--primary);">
-    <h3 class="card-title">⚙️ Panel Admin <span style="font-size:0.7rem; background:var(--primary-light); color:var(--primary); padding:0.15rem 0.5rem; border-radius:999px; font-weight:600;">ADMIN</span></h3>
-    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-        <!-- Tambah MK -->
-        <div>
-            <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">📚 Tambah Mata Kuliah</h4>
-            <form method="POST" action="{{ url_for('add_course') }}">
-                <div class="form-group"><label>Nama MK</label><input type="text" name="course_name" class="form-control" placeholder="Contoh: Pengolahan Citra" required></div>
-                <div class="form-group"><label>Deskripsi</label><input type="text" name="course_desc" class="form-control" placeholder="Keterangan..."></div>
-                <button type="submit" class="btn btn-primary" style="width:100%; font-size:0.8rem;">+ Tambah MK</button>
-            </form>
+    {% if admin %}
+    <div class="card glass-panel" style="border-left: 3px solid var(--primary);">
+        <h3 class="card-title">⚙️ Panel Admin <span style="font-size:0.7rem; background:var(--primary-light); color:var(--primary); padding:0.15rem 0.5rem; border-radius:999px; font-weight:600;">ADMIN</span></h3>
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div>
+                <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">📚 Tambah Mata Kuliah</h4>
+                <form method="POST" action="{{ url_for('add_course') }}">
+                    <div class="form-group"><label>Nama MK</label><input type="text" name="course_name" class="form-control" placeholder="Contoh: Pengolahan Citra" required></div>
+                    <div class="form-group"><label>Deskripsi</label><input type="text" name="course_desc" class="form-control" placeholder="Keterangan..."></div>
+                    <button type="submit" class="btn btn-primary" style="width:100%; font-size:0.8rem;">+ Tambah MK</button>
+                </form>
+            </div>
+            <div>
+                <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">👤 Tambah Asprak Baru</h4>
+                <form method="POST" action="{{ url_for('add_asprak') }}">
+                    <div class="form-group"><label>Nama</label><input type="text" name="asprak_name" class="form-control" placeholder="Nama asprak" required></div>
+                    <div class="form-group"><label>Password</label><input type="text" name="asprak_password" class="form-control" placeholder="Password" required></div>
+                    <div class="form-group">
+                        <label>Mata Kuliah</label>
+                        <select name="asprak_course_id" class="form-control" required>
+                            {% for c in courses %}<option value="{{ c.id }}" {% if c.id == sel_course %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
+                        <input type="checkbox" name="is_co_asprak" id="is_co_check" style="width:1.2rem; height:1.2rem;">
+                        <label for="is_co_check" style="margin:0; font-size:0.85rem; cursor:pointer;">Jadikan Co-Asprak ⭐</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%; font-size:0.8rem;">+ Tambah Asprak</button>
+                </form>
+            </div>
         </div>
-        <!-- Tambah Asprak -->
-        <div>
-            <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">👤 Tambah Asprak Baru</h4>
-            <form method="POST" action="{{ url_for('add_asprak') }}">
-                <div class="form-group"><label>Nama</label><input type="text" name="asprak_name" class="form-control" placeholder="Nama asprak" required></div>
-                <div class="form-group"><label>Password</label><input type="text" name="asprak_password" class="form-control" placeholder="Password" required></div>
-                <div class="form-group">
-                    <label>Mata Kuliah</label>
-                    <select name="asprak_course_id" class="form-control" required>
-                        {% for c in courses %}<option value="{{ c.id }}" {% if c.id == sel_course %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
-                    </select>
-                </div>
-                <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
-                    <input type="checkbox" name="is_co_asprak" id="is_co_check" style="width:1.2rem; height:1.2rem;">
-                    <label for="is_co_check" style="margin:0; font-size:0.85rem; cursor:pointer;">Jadikan Co-Asprak ⭐</label>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width:100%; font-size:0.8rem;">+ Tambah Asprak</button>
-            </form>
-        </div>
-    </div>
-    <!-- Edit / Hapus / Assign / Co-Asprak -->
-    <div style="margin-top: 2rem; border-top: 1px solid var(--table-border); padding-top: 1.5rem;">
-        <h4 style="margin-bottom:1rem; color:var(--primary); font-size:0.95rem; display:flex; align-items:center; gap:0.5rem;">
-            <span>✏️</span> Kelola Akun Asprak
-        </h4>
-        
-        <div class="management-list" style="width: 100%;">
-            {% for a in aspraks %}
-            {% if not a.is_admin %}
-            <div class="management-bar">
-                <div class="management-info" style="gap: 0.75rem;">
-                    <form method="POST" action="{{ url_for('edit_asprak') }}" style="display:flex; gap:0.4rem; align-items:center; flex:2; min-width: 250px;">
-                        <input type="hidden" name="asprak_id" value="{{ a.id }}">
-                        <input type="hidden" name="course_id" value="{{ sel_course }}">
-                        <input type="text" name="edit_asprak_name" value="{{ a.name }}" class="form-control" style="padding:0.35rem 0.6rem; font-size:0.85rem; font-weight:700; flex:2; min-width:120px;" placeholder="Nama Asprak" required>
-                        <input type="text" name="edit_asprak_password" placeholder="Pwd Baru" class="form-control" style="padding:0.35rem 0.6rem; font-size:0.8rem; width:100px; flex:1;" title="Ganti Password">
-                        <button type="submit" class="btn btn-secondary" style="padding:0; width:34px; height:34px; flex-shrink:0;" title="Simpan Perubahan">💾</button>
-                    </form>
-                    
-                    <div style="display:flex; align-items:center; gap:0.5rem; flex:1; justify-content: flex-end;">
-                        <!-- Course Indicator -->
-                        <div class="management-course" style="max-width: 120px; overflow:hidden; text-overflow:ellipsis;" title="Praktikum Terdaftar">
-                            {% for c in courses %}{% if c.id == a.course_id %}{{ c.name }}{% endif %}{% endfor %}
-                        </div>
-                        
-                        <!-- Assign Course -->
-                        <form method="POST" action="{{ url_for('assign_asprak_course') }}" style="display:flex; gap:0.2rem; align-items:center;">
+
+        <div style="margin-top: 2rem; border-top: 1px solid var(--table-border); padding-top: 1.5rem;">
+            <h4 style="margin-bottom:1rem; color:var(--primary); font-size:0.95rem; display:flex; align-items:center; gap:0.5rem;">
+                <span>✏️</span> Kelola Akun Asprak
+            </h4>
+            
+            <div class="management-list" style="width: 100%;">
+                {% for a in aspraks %}
+                {% if not a.is_admin %}
+                <div class="management-bar">
+                    <div class="management-info" style="gap: 0.75rem;">
+                        <form method="POST" action="{{ url_for('edit_asprak') }}" style="display:flex; gap:0.4rem; align-items:center; flex:2; min-width: 250px;">
                             <input type="hidden" name="asprak_id" value="{{ a.id }}">
                             <input type="hidden" name="course_id" value="{{ sel_course }}">
-                            <select name="new_course_id" class="form-control" style="padding:0 0.5rem; font-size:0.75rem; width:110px; height:34px;">
-                                {% for c in courses %}<option value="{{ c.id }}" {% if c.id == a.course_id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
-                            </select>
-                            <button type="submit" class="btn btn-secondary" style="padding:0; width:34px; height:34px;" title="Pindah Praktikum">📋</button>
+                            <input type="text" name="edit_asprak_name" value="{{ a.name }}" class="form-control" style="padding:0.35rem 0.6rem; font-size:0.85rem; font-weight:700; flex:2; min-width:120px;" placeholder="Nama Asprak" required>
+                            <input type="text" name="edit_asprak_password" placeholder="Pwd Baru" class="form-control" style="padding:0.35rem 0.6rem; font-size:0.8rem; width:100px; flex:1;" title="Ganti Password">
+                            <button type="submit" class="btn btn-secondary" style="padding:0; width:34px; height:34px; flex-shrink:0;" title="Simpan Perubahan">💾</button>
+                        </form>
+                        
+                        <div style="display:flex; align-items:center; gap:0.5rem; flex:1; justify-content: flex-end;">
+                            <div class="management-course" style="max-width: 120px; overflow:hidden; text-overflow:ellipsis;">
+                                {% for c in courses %}{% if c.id == a.course_id %}{{ c.name }}{% endif %}{% endfor %}
+                            </div>
+                            
+                            <form method="POST" action="{{ url_for('assign_asprak_course') }}" style="display:flex; gap:0.2rem; align-items:center;">
+                                <input type="hidden" name="asprak_id" value="{{ a.id }}">
+                                <input type="hidden" name="course_id" value="{{ sel_course }}">
+                                <select name="new_course_id" class="form-control" style="padding:0 0.5rem; font-size:0.75rem; width:110px; height:34px;">
+                                    {% for c in courses %}<option value="{{ c.id }}" {% if c.id == a.course_id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-secondary" style="padding:0; width:34px; height:34px;" title="Pindah Praktikum">📋</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="management-actions" style="margin-left: auto;">
+                        <form method="POST" action="{{ url_for('toggle_co_asprak') }}">
+                            <input type="hidden" name="asprak_id" value="{{ a.id }}">
+                            <input type="hidden" name="course_id" value="{{ sel_course }}">
+                            <button type="submit" class="btn {% if a.is_co_asprak %}btn-success{% else %}btn-secondary{% endif %}" style="padding:0 0.75rem; height:34px; font-size:0.8rem; font-weight:700;">
+                                {% if a.is_co_asprak %}⭐ Co{% else %}👤 Co{% endif %}
+                            </button>
+                        </form>
+                        
+                        <form method="POST" action="{{ url_for('delete_asprak') }}" onsubmit="return confirm('Hapus akun {{ a.name }}?');">
+                            <input type="hidden" name="asprak_id" value="{{ a.id }}">
+                            <input type="hidden" name="course_id" value="{{ sel_course }}">
+                            <button type="submit" class="btn btn-danger" style="padding:0; width:34px; height:34px;">🗑</button>
                         </form>
                     </div>
                 </div>
-
-                <div class="management-actions" style="margin-left: auto;">
-                    <!-- Co-Asprak Toggle -->
-                    <form method="POST" action="{{ url_for('toggle_co_asprak') }}">
-                        <input type="hidden" name="asprak_id" value="{{ a.id }}">
-                        <input type="hidden" name="course_id" value="{{ sel_course }}">
-                        <button type="submit" class="btn {% if a.is_co_asprak %}btn-success{% else %}btn-secondary{% endif %}" style="padding:0 0.75rem; height:34px; font-size:0.8rem; font-weight:700;" title="Toggle Co-Asprak">
-                            {% if a.is_co_asprak %}⭐ Co{% else %}👤 Co{% endif %}
-                        </button>
-                    </form>
-                    
-                    <!-- Delete -->
-                    <form method="POST" action="{{ url_for('delete_asprak') }}" onsubmit="return confirm('Hapus akun {{ a.name }}?');">
-                        <input type="hidden" name="asprak_id" value="{{ a.id }}">
-                        <input type="hidden" name="course_id" value="{{ sel_course }}">
-                        <button type="submit" class="btn btn-danger" style="padding:0; width:34px; height:34px;" title="Hapus Akun">🗑</button>
-                    </form>
-                </div>
+                {% endif %}
+                {% endfor %}
             </div>
-            {% endif %}
-            {% endfor %}
         </div>
-        <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.75rem;">
-            💡 <b>Tips:</b> Klik icon 💾 untuk menyimpan perubahan nama/password. Klik icon 📋 untuk memindahkan Asprak ke mata kuliah lain.
-        </p>
-    </div>
-</div>
-{% endif %}
-
-{% if admin or is_co_asprak %}
-<!-- ========== CO-ASPRAK PANEL: DRIVE LINK ========== -->
-<div class="card glass-panel" style="border-left: 3px solid var(--secondary);">
-    <h3 class="card-title">🔗 Link Folder Google Drive</h3>
-    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-        Hubungkan folder Google Drive untuk menyimpan file modul praktikan di mata kuliah ini.
-    </p>
-    <form method="POST" action="{{ url_for('set_drive_link') }}" style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
-        <input type="hidden" name="course_id" value="{{ sel_course }}">
-        <div class="form-group" style="margin-bottom:0; flex:1; min-width:300px;">
-            <label style="font-size:0.8rem;">URL Folder Drive</label>
-            <input type="url" name="drive_link" class="form-control" placeholder="https://drive.google.com/drive/folders/..." value="{{ course_drive_link or '' }}">
-        </div>
-        <button type="submit" class="btn btn-secondary" style="font-size:0.85rem; white-space:nowrap;">💾 Simpan Link</button>
-    </form>
-    {% if course_drive_link %}
-    <div style="margin-top: 0.75rem;">
-        <a href="{{ course_drive_link }}" target="_blank" style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">📁 Buka Folder Drive Saat Ini</a>
     </div>
     {% endif %}
-</div>
-{% endif %}
 
-{% if admin %}
-<!-- Modul Management -->
-<div class="card glass-panel">
-    <h3 class="card-title">📋 Pengaturan Modul</h3>
-    <div class="grid grid-cols-2">
-        <div>
-            <h4 style="margin-bottom:1rem; color:var(--primary); font-size:0.9rem; display:flex; align-items:center; gap:0.5rem;"><span>➕</span> Tambah Modul</h4>
-            <form method="POST" action="{{ url_for('add_module') }}">
-                <input type="hidden" name="course_id" value="{{ sel_course }}">
-                <div class="form-group"><label>Nama Modul</label><input type="text" name="name" class="form-control" placeholder="Contoh: Modul 2" required></div>
-                <div class="form-group"><label>Instruksi</label><textarea name="description" class="form-control" rows="2" placeholder="Tulis instruksi atau deadline..."></textarea></div>
-                <button type="submit" class="btn btn-primary" style="width:100%;">Tambah Modul</button>
-            </form>
+    {% if admin or is_co_asprak %}
+    <div class="card glass-panel" style="border-left: 3px solid var(--secondary);">
+        <h3 class="card-title">🔗 Link Folder Google Drive</h3>
+        <form method="POST" action="{{ url_for('set_drive_link') }}" style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
+            <input type="hidden" name="course_id" value="{{ sel_course }}">
+            <div class="form-group" style="margin-bottom:0; flex:1; min-width:300px;">
+                <label style="font-size:0.8rem;">URL Folder Drive</label>
+                <input type="url" name="drive_link" class="form-control" placeholder="https://drive.google.com/..." value="{{ course_drive_link or '' }}">
+            </div>
+            <button type="submit" class="btn btn-secondary" style="font-size:0.85rem;">💾 Simpan Link</button>
+        </form>
+        {% if course_drive_link %}
+        <div style="margin-top: 0.75rem;">
+            <a href="{{ course_drive_link }}" target="_blank" style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">📁 Buka Folder Drive</a>
         </div>
-        <div style="border-left: 1px solid var(--table-border); padding-left: 2rem;" class="mobile-border-none">
-            <h4 style="margin-bottom:1rem; color:var(--primary); font-size:0.9rem; display:flex; align-items:center; gap:0.5rem;"><span>✏️</span> Edit & Status</h4>
-            <form method="POST" action="{{ url_for('edit_module') }}" style="margin-bottom:1rem;">
-                <div class="form-group"><label>Pilih Modul</label>
-                    <select name="module_id" class="form-control" required onchange="updateEditForm(this)">
-                        <option value="" disabled selected>Pilih Modul...</option>
-                        {% for m in modules %}<option value="{{ m.id }}" data-name="{{ m.name }}" data-desc="{{ m.description }}" data-open="{{ m.is_open }}">{{ m.name }} {% if m.is_open == 0 %}🔴{% else %}🟢{% endif %}</option>{% endfor %}
-                    </select>
-                </div>
-                <div class="form-group"><label>Nama Baru</label><input type="text" name="name" id="edit_name" class="form-control" required></div>
-                <div class="form-group"><label>Instruksi Baru</label><textarea name="description" id="edit_desc" class="form-control" rows="2"></textarea></div>
-                <button type="submit" class="btn btn-secondary" style="width:100%;">Simpan Perubahan</button>
-            </form>
-            <form method="POST" action="{{ url_for('toggle_module_status') }}">
-                <input type="hidden" name="module_id" id="toggle_module_id">
-                <input type="hidden" name="current_status" id="toggle_current_status">
-                <button type="submit" id="toggleBtn" class="btn" style="width:100%; display:none;"></button>
-            </form>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="card glass-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+            <h3 class="card-title" style="margin-bottom:0;">📝 Penilaian Praktikan</h3>
+            <div style="display:flex; gap:0.5rem;">
+                <a href="{{ url_for('export_excel', course_id=sel_course) }}" class="btn btn-secondary" style="font-size:0.85rem;">📥 Cetak Excel</a>
+                <button type="submit" form="batchGradeForm" class="btn btn-primary" style="font-size:0.85rem;">🚀 Simpan Semua</button>
+            </div>
         </div>
+
+        <form id="batchGradeForm" method="POST" action="{{ url_for('asprak_grade_batch') }}">
+            <input type="hidden" name="course_id" value="{{ sel_course }}">
+            <div class="table-responsive">
+                <table class="grade-table">
+                    <thead>
+                        <tr>
+                            <th>Kel.</th>
+                            <th>Nama Praktikan</th>
+                            <th>Pindah Kel.</th>
+                            {% for m in modules %}
+                                <th style="text-align:center;">{{ m.name }}<br><small>(TP/Prak/Modul)</small></th>
+                            {% endfor %}
+                            <th style="text-align:center;">Buku</th>
+                            <th style="text-align:center;">Total</th>
+                            <th style="text-align:center;">Huruf</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in praktikans %}
+                        <tr>
+                            <td style="font-weight:600;">{{ p.group_id }}</td>
+                            <td><input type="text" name="praktikan_name_{{ p.id }}" value="{{ p.name }}" class="form-control" style="border:none; background:transparent; font-weight:600; width:100%;"></td>
+                            <td>
+                                <div style="display:flex; gap:0.2rem; align-items:center;">
+                                    <input type="number" id="group_input_{{ p.id }}" value="{{ p.group_id }}" class="form-control" style="width:50px; text-align:center;" min="1">
+                                    <button type="button" onclick="changeGroup('{{ p.id }}', '{{ sel_course }}')" class="btn btn-secondary" style="padding:0.15rem 0.35rem;">↕</button>
+                                </div>
+                            </td>
+                            {% for m in modules %}
+                                {% set g = p.grades.get(m.id, {'tp_score':0,'praktikum_score':0,'modul_score':0}) %}
+                                <td style="min-width:190px;">
+                                    <div style="display:flex; gap:0.2rem; justify-content:center;">
+                                        <input type="number" name="tp_score_{{ p.id }}_{{ m.id }}" value="{{ g.tp_score }}" class="form-control" style="width:45px; text-align:center;" min="0" max="100">
+                                        <input type="number" name="praktikum_score_{{ p.id }}_{{ m.id }}" value="{{ g.praktikum_score }}" class="form-control" style="width:45px; text-align:center;" min="0" max="100">
+                                        <input type="number" name="modul_score_{{ p.id }}_{{ m.id }}" value="{{ g.modul_score }}" class="form-control" style="width:45px; text-align:center;" min="0" max="100">
+                                    </div>
+                                </td>
+                            {% endfor %}
+                            <td>
+                                <input type="number" name="pembukuan_{{ p.id }}" value="{{ p.pembukuan_score|default(0) }}" class="form-control" style="width:50px; margin:0 auto; text-align:center;" min="0" max="100">
+                            </td>
+                            <td style="text-align:center; font-weight:700;">{{ p.total }}</td>
+                            <td style="text-align:center;">
+                                <span class="badge-letter" data-letter="{{ p.letter }}">{{ p.letter }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
     </div>
 </div>
+
+<form id="groupChangeForm" method="POST" action="{{ url_for('edit_praktikan_group') }}" style="display:none;">
+    <input type="hidden" name="praktikan_id" id="gc_praktikan_id">
+    <input type="hidden" name="course_id" id="gc_course_id">
+    <input type="hidden" name="new_group_id" id="gc_new_group_id">
+</form>
+
 <script>
+/**
+ * Fungsi untuk mengubah kelompok praktikan
+ * @param {string} pId - ID Praktikan
+ * @param {string} cId - ID Mata Kuliah
+ */
+function changeGroup(pId, cId) {
+    const newG = document.getElementById('group_input_' + pId).value;
+    if (newG) {
+        document.getElementById('gc_praktikan_id').value = pId;
+        document.getElementById('gc_course_id').value = cId;
+        document.getElementById('gc_new_group_id').value = newG;
+        document.getElementById('groupChangeForm').submit();
+    }
+}
+
+/**
+ * Fungsi untuk update form edit modul
+ */
 function updateEditForm(s) {
-    var o = s.options[s.selectedIndex];
+    const o = s.options[s.selectedIndex];
+    if (!o.value) return;
+    
     document.getElementById('edit_name').value = o.getAttribute('data-name');
     document.getElementById('edit_desc').value = o.getAttribute('data-desc') || '';
-    var isOpen = o.getAttribute('data-open') === '1';
-    var tb = document.getElementById('toggleBtn');
+    
+    const isOpen = o.getAttribute('data-open') === '1';
+    const tb = document.getElementById('toggleBtn');
+    
     document.getElementById('toggle_module_id').value = o.value;
     document.getElementById('toggle_current_status').value = isOpen ? '1' : '0';
+    
     tb.style.display = 'block';
     tb.innerText = isOpen ? '🛑 Tutup Pengumpulan' : '✅ Buka Pengumpulan';
     tb.className = isOpen ? 'btn btn-danger' : 'btn btn-success';
     tb.style.width = '100%';
 }
 </script>
-{% endif %}
 
-<!-- ========== TAMBAH PRAKTIKAN (ALL ASPRAK) ========== -->
-<div class="card glass-panel">
-    <h3 class="card-title">👥 Tambah Praktikan Baru</h3>
-    <form method="POST" action="{{ url_for('add_praktikan') }}" style="display:flex; gap:0.5rem; align-items:flex-end; flex-wrap:wrap;">
-        <input type="hidden" name="course_id" value="{{ sel_course }}">
-        <div class="form-group" style="margin-bottom:0; flex:1; min-width:150px;">
-            <label style="font-size:0.8rem;">Nama</label>
-            <input type="text" name="new_praktikan_name" class="form-control" placeholder="Nama praktikan" required>
-        </div>
-        <div class="form-group" style="margin-bottom:0; width:100px;">
-            <label style="font-size:0.8rem;">Kelompok</label>
-            <input type="number" name="new_praktikan_group" class="form-control" placeholder="No." min="1" required>
-        </div>
-        <button type="submit" class="btn btn-primary" style="font-size:0.85rem; white-space:nowrap;">+ Tambah</button>
-    </form>
-</div>
-
-<!-- ========== PENGUMPULAN ========== -->
-<div class="card glass-panel">
-    <h3 class="card-title">📥 Modul Terkumpul</h3>
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr><th>Waktu</th><th>Kel</th><th>Modul</th><th>File</th><th>Perwakilan</th><th>Aksi</th></tr>
-            </thead>
-            <tbody>
-                {% for sub in submissions %}
-                <tr>
-                    <td style="font-size:0.85rem; white-space:nowrap;">{{ sub.timestamp.split('.')[0] }}</td>
-                    <td style="text-align:center; font-weight:700;">{{ sub.group_id }}</td>
-                    <td>{{ sub.module_name }}</td>
-                    <td><a href="{{ url_for('download_file', name=sub.file_path) }}" target="_blank" class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem;">📎 Unduh</a></td>
-                    <td style="font-size:0.85rem;">{{ sub.submitter_name if sub.submitter_name else '—' }}</td>
-                    <td><form method="POST" action="{{ url_for('delete_submission', id=sub.id) }}" onsubmit="return confirm('Reset pengumpulan ini?');" style="display:inline;"><button type="submit" class="btn btn-danger" style="padding:0.25rem 0.6rem; font-size:0.75rem;">Reset</button></form></td>
-                </tr>
-                {% else %}
-                <tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">Belum ada modul dikumpulkan.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- ========== PENILAIAN ========== -->
-<div class="card glass-panel">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
-        <h3 class="card-title" style="margin-bottom:0;">📝 Penilaian Praktikan</h3>
-        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <a href="{{ url_for('export_excel', course_id=sel_course) }}" class="btn btn-secondary" style="font-size:0.85rem;">📥 Cetak Excel</a>
-            <button type="submit" form="batchGradeForm" class="btn btn-primary" style="font-size:0.85rem;">🚀 Simpan Semua</button>
-        </div>
-    </div>
-    <form id="batchGradeForm" method="POST" action="{{ url_for('asprak_grade_batch') }}">
-        <input type="hidden" name="course_id" value="{{ sel_course }}">
-        <div class="table-responsive" style="position:relative;">
-            <table class="grade-table"><thead><tr>
-            <th>Kel.</th><th>Nama Praktikan</th><th>Pindah Kel.</th>
-            {% for m in modules %}<th style="text-align:center;">{{ m.name }}<br><small style="font-weight:400; opacity:0.7;">(TP/Prak/Modul)</small></th>{% endfor %}
-            <th style="text-align:center;">Buku</th>
-            <th style="text-align:center;">Total</th><th style="text-align:center;">Huruf</th>
-        </tr></thead><tbody>
-        {% for p in praktikans %}
-        <tr>
-            <td style="font-weight:600; color:var(--text-muted); font-size:0.85rem;">{{ p.group_id }}</td>
-            <td><input type="text" name="praktikan_name_{{ p.id }}" value="{{ p.name }}" class="form-control" style="border:1px solid transparent; background:transparent; font-weight:600; padding:0.3rem 0.5rem; width:100%; min-width:120px; color:var(--text-main);"></td>
-            <td>
-                <form method="POST" action="{{ url_for('edit_praktikan_group') }}" style="display:flex; gap:0.2rem; align-items:center;">
-                    <input type="hidden" name="praktikan_id" value="{{ p.id }}">
-                    <input type="hidden" name="course_id" value="{{ sel_course }}">
-                    <input type="number" name="new_group_id" value="{{ p.group_id }}" class="form-control" style="width:50px; padding:0.2rem; text-align:center; font-size:0.8rem;" min="1">
-                    <button type="submit" class="btn btn-secondary" style="padding:0.15rem 0.35rem; font-size:0.7rem;">↕</button>
-                </form>
-            </td>
-            {% for m in modules %}
-            {% set g = p.grades.get(m.id, {'tp_score':0,'praktikum_score':0,'modul_score':0}) %}
-            <td style="min-width:190px; text-align:center;"><div style="display:flex; gap:0.2rem; justify-content:center;">
-                <input type="number" name="tp_score_{{ p.id }}_{{ m.id }}" value="{{ g.tp_score }}" class="form-control" style="width:45px; padding:0.25rem; text-align:center; font-size:0.8rem;" min="0" max="100">
-                <input type="number" name="praktikum_score_{{ p.id }}_{{ m.id }}" value="{{ g.praktikum_score }}" class="form-control" style="width:45px; padding:0.25rem; text-align:center; font-size:0.8rem;" min="0" max="100">
-                <input type="number" name="modul_score_{{ p.id }}_{{ m.id }}" value="{{ g.modul_score }}" class="form-control" style="width:45px; padding:0.25rem; text-align:center; font-size:0.8rem;" min="0" max="100">
-            </div></td>
-            {% endfor %}
-            <td style="text-align:center;">
-                <input type="number" name="pembukuan_{{ p.id }}" value="{{ p.pembukuan_score|default(0) }}" class="form-control" style="width:50px; padding:0.25rem; text-align:center; font-size:0.8rem; border-color:var(--secondary); margin:0 auto;" min="0" max="100">
-            </td>
-            <td style="text-align:center; font-weight:700; font-size:1rem;">{{ p.total }}</td>
-            <td style="text-align:center;">
-                {% if p.letter in ('A','B+','B') %}<span style="background:var(--success-bg); color:var(--success); padding:0.2rem 0.6rem; border-radius:6px; font-weight:700;">{{ p.letter }}</span>
-                {% elif p.letter in ('D','E') %}<span style="background:var(--danger-bg); color:var(--danger); padding:0.2rem 0.6rem; border-radius:6px; font-weight:700;">{{ p.letter }}</span>
-                {% else %}<span style="background:var(--primary-light); color:var(--primary); padding:0.2rem 0.6rem; border-radius:6px; font-weight:700;">{{ p.letter }}</span>{% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-        </tbody></table></div>
-    </form>
-
-    <!-- Grade Legend -->
-    <div style="margin-top:1.25rem; padding:1rem 1.25rem; background:var(--bg-card); border:1px solid var(--border); border-radius:10px;">
-        <h4 style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem;">📊 Panduan Konversi Nilai</h4>
-        <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
-            {% for letter, range, color in grade_legend %}
-            <span style="padding:0.25rem 0.6rem; border-radius:6px; font-size:0.8rem; font-weight:600; background:var(--bg-main); border:1px solid var(--border);">
-                <span style="color:{{ color }};">{{ letter }}</span> = {{ range }}
-            </span>
-            {% endfor %}
-        </div>
-        <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem;">Formula: Total = (Rata-rata Modul + Pembukuan) ÷ (Jumlah Modul + 1)</p>
-    </div>
-</div>
-
-</div>
+<style>
+/* Perbaikan CSS agar tidak tabrakan dengan Jinja */
+.badge-letter {
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-weight: 700;
+}
+.badge-letter[data-letter="A"], 
+.badge-letter[data-letter="B+"], 
+.badge-letter[data-letter="B"] {
+    background: var(--success-bg);
+    color: var(--success);
+}
+.badge-letter[data-letter="D"], 
+.badge-letter[data-letter="E"] {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+</style>
 {% endblock %}

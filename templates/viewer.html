@@ -65,8 +65,8 @@
         <h4 style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem;">📊 Panduan Konversi Nilai</h4>
         <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
             {% for letter, range, color in grade_legend %}
-            <span style="padding:0.25rem 0.6rem; border-radius:6px; font-size:0.8rem; font-weight:600; background:var(--bg-main); border:1px solid var(--border);">
-                <span style="color:{{ color }};">{{ letter }}</span> = {{ range }}
+            <span style="padding:0.25rem 0.6rem; border-radius:6px; font-size:0.8rem; font-weight:600; background:var(--bg-main); border:1px solid var(--border); color: {{ color }};">
+                {{ letter }} = {{ range }}
             </span>
             {% endfor %}
         </div>
