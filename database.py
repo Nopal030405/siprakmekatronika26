@@ -137,11 +137,8 @@ def migrate():
         except sqlite3.OperationalError:
             pass
     
-    # Ensure viewer account exists
-    viewer = c.execute("SELECT id FROM users WHERE role='VIEWER'").fetchone()
-    if not viewer:
-        c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin) VALUES (?, ?, ?, ?, ?, ?)",
-                  ('viewer', 'VIEWER', 0, 'lihat123', None, 0))
+    # Ensure no viewer account exists (as requested in previous cleanup)
+    c.execute("DELETE FROM users WHERE role='VIEWER'")
     
     conn.commit()
     conn.close()
