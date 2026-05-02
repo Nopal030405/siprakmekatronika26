@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-DB_NAME = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "siprak.db")
+DB_NAME = os.path.join(os.path.dirname(os.path.abspath(__file__)), "siprak.db")
 
 def reset_database():
     if not os.path.exists(DB_NAME):
