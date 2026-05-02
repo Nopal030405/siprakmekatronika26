@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="margin-bottom: 1.5rem;">
-    <h2 style="font-size: 1.8rem; color: var(--primary);">🔍 Viewer Dashboard <span style="font-size:0.7rem; background:var(--primary-light); color:var(--primary); padding:0.15rem 0.5rem; border-radius:999px; font-weight:600;">READ-ONLY</span></h2>
-    <form method="GET" action="{{ url_for('viewer_dashboard') }}" style="display:flex; align-items:center; gap:0.75rem; margin-top:0.75rem; flex-wrap:wrap;">
+<div class="page-header">
+    <h2 style="font-size: 1.8rem; color: var(--primary); margin: 0;">🔍 Viewer Dashboard <span style="font-size:0.7rem; background:var(--primary-light); color:var(--primary); padding:0.15rem 0.5rem; border-radius:999px; font-weight:600;">READ-ONLY</span></h2>
+    <form method="GET" action="{{ url_for('viewer_dashboard') }}" style="display:flex; align-items:center; justify-content:center; gap:0.75rem; flex-wrap:wrap; width:100%;">
         <label style="font-weight:600; color:var(--text-muted); font-size:0.85rem;">Mata Kuliah:</label>
-        <select name="course_id" class="form-control" style="width:auto; min-width:200px;" onchange="this.form.submit()">
+        <select name="course_id" class="form-control" style="width:auto; min-width:240px; text-align-last: center;" onchange="this.form.submit()">
             {% for c in courses %}
             <option value="{{ c.id }}" {% if c.id == sel_course %}selected{% endif %}>{{ c.name }}</option>
             {% endfor %}

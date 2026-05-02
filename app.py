@@ -2,6 +2,7 @@ import os, io
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, send_file
 from werkzeug.utils import secure_filename
 from database import get_db
+from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 
@@ -59,20 +60,10 @@ GRADE_LEGEND = [
 
 def get_allowed_groups(asprak_name, course_id):
     conn = get_db()
-    # Admin sees all groups in the course
-    user = conn.execute('SELECT is_admin FROM users WHERE LOWER(name)=LOWER(?) AND role="ASPRAK"', (asprak_name,)).fetchone()
-    if user and user['is_admin']:
-        groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id', (course_id,)).fetchall()
-        conn.close()
-        return tuple(g['group_id'] for g in groups)
-    # Hardcoded for existing Sistem Kontrol aspraks
-    name = asprak_name.lower()
+    # All aspraks can see all groups in the course now since they input them manually
+    groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id', (course_id,)).fetchall()
     conn.close()
-    if name == 'naufal': return (1, 6, 7)
-    elif name == 'afrian': return (2, 8, 11)
-    elif name == 'aza': return (3, 5, 9)
-    elif name == 'asad': return (4, 10, 12)
-    return ()
+    return tuple(g['group_id'] for g in groups)
 
 def is_admin_user(user_id):
     conn = get_db()
@@ -120,9 +111,17 @@ def praktikan_submit():
         flash('Tidak ada file yang dipilih', 'error'); return redirect(url_for('praktikan_dashboard'))
     if file and allowed_file(file.filename):
         conn = get_db()
-        module = conn.execute('SELECT is_open FROM modules WHERE id=?', (module_id,)).fetchone()
+        module = conn.execute('SELECT is_open, deadline FROM modules WHERE id=?', (module_id,)).fetchone()
         if not module or not module['is_open']:
             flash('Pengumpulan untuk modul ini sudah ditutup!', 'error'); conn.close(); return redirect(url_for('praktikan_dashboard'))
+        if module['deadline']:
+            try:
+                # Handle possible varying datetime formats. Standard datetime-local is YYYY-MM-DDTHH:MM
+                deadline_dt = datetime.strptime(module['deadline'], '%Y-%m-%dT%H:%M')
+                if datetime.now() > deadline_dt:
+                    flash('Pengumpulan untuk modul ini sudah melewati batas waktu (deadline)!', 'error'); conn.close(); return redirect(url_for('praktikan_dashboard'))
+            except ValueError:
+                pass # If format fails, fallback to string comparison or just pass
         existing = conn.execute('SELECT * FROM submissions WHERE group_id=? AND module_id=?', (group_id, module_id)).fetchone()
         if existing:
             flash('Kelompok sudah mengumpulkan modul ini!', 'error'); conn.close(); return redirect(url_for('praktikan_dashboard'))
@@ -141,7 +140,7 @@ def praktikan_submit():
 @app.route('/asprak/login', methods=['GET', 'POST'])
 def asprak_login():
     if 'role' in session and session['role'] == 'ASPRAK':
-        return redirect(url_for('asprak_dashboard'))
+        return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         password = request.form.get('password')
@@ -151,7 +150,7 @@ def asprak_login():
         if user:
             session['user_id'] = user['id']
             session['role'] = user['role']
-            return redirect(url_for('asprak_dashboard'))
+            return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
         else:
             flash('Login gagal, periksa nama atau password', 'error')
     return render_template('login.html')
@@ -174,17 +173,38 @@ def asprak_dashboard():
         return redirect(url_for('asprak_login'))
     asprak_name = user['name']
     admin = user['is_admin'] == 1
-    courses = conn.execute('SELECT * FROM courses').fetchall()
+    if admin:
+        courses = conn.execute('SELECT * FROM courses').fetchall()
+    else:
+        courses = conn.execute('''
+            SELECT c.* FROM courses c
+            JOIN users u ON u.course_id = c.id
+            WHERE u.name = ? AND u.role = 'ASPRAK'
+        ''', (asprak_name,)).fetchall()
     # Course selection
     sel_course = request.args.get('course_id', type=int)
     if not sel_course:
         sel_course = user['course_id'] or (courses[0]['id'] if courses else None)
-    co_asprak = user['is_co_asprak'] == 1
+    
+    co_asprak = False
+    if not admin and sel_course:
+        user_for_course = conn.execute('SELECT is_co_asprak FROM users WHERE name=? AND role="ASPRAK" AND course_id=?', (asprak_name, sel_course)).fetchone()
+        if user_for_course:
+            co_asprak = user_for_course['is_co_asprak'] == 1
+    
+    # Tentukan tab default
+    active_tab = request.args.get('tab')
+    if not active_tab:
+        if admin:
+            active_tab = 'gdrive'
+        else:
+            active_tab = 'grading'
+
     if not sel_course:
         conn.close()
         return render_template('asprak.html', modules=[], submissions=[], praktikans=[], courses=courses,
                                sel_course=None, admin=admin, aspraks=[], calculate_module_avg=calculate_module_avg,
-                               grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=None)
+                               grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=None, active_tab=active_tab)
     modules = conn.execute('SELECT * FROM modules WHERE course_id=?', (sel_course,)).fetchall()
     allowed = get_allowed_groups(asprak_name, sel_course)
     if not allowed:
@@ -196,7 +216,7 @@ def asprak_dashboard():
             conn2.close()
         return render_template('asprak.html', modules=modules, submissions=[], praktikans=[], courses=courses,
                                sel_course=sel_course, admin=admin, aspraks=aspraks, calculate_module_avg=calculate_module_avg,
-                               grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=None)
+                               grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=None, active_tab=active_tab)
     ph = ','.join('?' for _ in allowed)
     subs_raw = conn.execute(f'''SELECT s.*, m.name as module_name, u.name as submitter_name
         FROM submissions s JOIN modules m ON s.module_id=m.id LEFT JOIN users u ON s.submitted_by=u.id
@@ -221,7 +241,7 @@ def asprak_dashboard():
         praktikans.append(pd)
     aspraks = []
     if admin:
-        aspraks = conn.execute('SELECT * FROM users WHERE role="ASPRAK" ORDER BY name').fetchall()
+        aspraks = conn.execute('SELECT * FROM users WHERE role="ASPRAK" AND course_id=? ORDER BY name', (sel_course,)).fetchall()
     all_groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id', (sel_course,)).fetchall()
     all_groups = [g['group_id'] for g in all_groups]
     # Get drive link for selected course
@@ -231,7 +251,8 @@ def asprak_dashboard():
     return render_template('asprak.html', modules=modules, submissions=submissions, praktikans=praktikans,
                            courses=courses, sel_course=sel_course, admin=admin, aspraks=aspraks,
                            calculate_module_avg=calculate_module_avg, grade_legend=GRADE_LEGEND,
-                           all_groups=all_groups, is_co_asprak=co_asprak, course_drive_link=course_drive_link)
+                           all_groups=all_groups, is_co_asprak=co_asprak, course_drive_link=course_drive_link,
+                           active_tab=active_tab)
 
 # ======== GRADE BATCH ========
 @app.route('/asprak/grade_batch', methods=['POST'])
@@ -262,7 +283,7 @@ def asprak_grade_batch():
     conn.commit(); conn.close()
     flash('Semua perubahan berhasil disimpan!', 'success')
     course_id = request.form.get('course_id', '')
-    return redirect(url_for('asprak_dashboard', course_id=course_id))
+    return redirect(url_for('asprak_dashboard', course_id=course_id, tab=request.form.get('tab') or request.args.get('tab')))
 
 # ======== EXPORT EXCEL ========
 @app.route('/asprak/export')
@@ -279,7 +300,7 @@ def export_excel():
     ml = [dict(m) for m in modules]
     allowed = get_allowed_groups(user['name'], sel_course)
     if not allowed:
-        flash('Tidak ada data', 'error'); conn.close(); return redirect(url_for('asprak_dashboard'))
+        flash('Tidak ada data', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     ph = ','.join('?' for _ in allowed)
     praks = conn.execute(f'SELECT * FROM users WHERE role="PRAKTIKAN" AND course_id=? AND group_id IN ({ph}) ORDER BY group_id, name',
                          (sel_course, *allowed)).fetchall()
@@ -330,7 +351,7 @@ def export_excel():
 @app.route('/admin/course/add', methods=['POST'])
 def add_course():
     if not is_admin_user(session.get('user_id')):
-        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard'))
+        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     name = request.form.get('course_name', '').strip()
     desc = request.form.get('course_desc', '').strip()
     if name:
@@ -338,13 +359,13 @@ def add_course():
         conn.execute('INSERT INTO courses (name, description) VALUES (?,?)', (name, desc))
         conn.commit(); conn.close()
         flash(f'Mata kuliah "{name}" berhasil ditambahkan!', 'success')
-    return redirect(url_for('asprak_dashboard'))
+    return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
 
 # ======== ADMIN: ASPRAK MANAGEMENT ========
 @app.route('/admin/asprak/add', methods=['POST'])
 def add_asprak():
     if not is_admin_user(session.get('user_id')):
-        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard'))
+        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     name = request.form.get('asprak_name', '').strip()
     pwd = request.form.get('asprak_password', '').strip()
     cid = request.form.get('asprak_course_id', type=int)
@@ -360,76 +381,104 @@ def add_asprak():
             conn.commit()
             flash(f'Asprak "{name}" berhasil ditambahkan!', 'success')
         conn.close()
-    return redirect(url_for('asprak_dashboard'))
+    return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
 
 @app.route('/admin/asprak/edit', methods=['POST'])
 def edit_asprak():
     if not is_admin_user(session.get('user_id')):
-        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard'))
+        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     aid = request.form.get('asprak_id', type=int)
     conn = get_db()
     target = conn.execute('SELECT * FROM users WHERE id=?', (aid,)).fetchone()
     if target and target['is_admin']:
-        flash('Tidak bisa mengubah akun admin', 'error'); conn.close(); return redirect(url_for('asprak_dashboard'))
+        flash('Tidak bisa mengubah akun admin', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     new_name = request.form.get('edit_asprak_name', '').strip()
     new_pwd = request.form.get('edit_asprak_password', '').strip()
     if new_name: conn.execute('UPDATE users SET name=? WHERE id=?', (new_name, aid))
     if new_pwd: conn.execute('UPDATE users SET password=? WHERE id=?', (new_pwd, aid))
     conn.commit(); conn.close()
     flash('Asprak berhasil diperbarui!', 'success')
-    return redirect(url_for('asprak_dashboard'))
+    return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
 
 @app.route('/admin/asprak/delete', methods=['POST'])
 def delete_asprak():
     if not is_admin_user(session.get('user_id')):
-        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard'))
+        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     aid = request.form.get('asprak_id', type=int)
     conn = get_db()
     target = conn.execute('SELECT * FROM users WHERE id=?', (aid,)).fetchone()
     if target and target['is_admin']:
-        flash('Tidak bisa menghapus akun admin', 'error'); conn.close(); return redirect(url_for('asprak_dashboard'))
+        flash('Tidak bisa menghapus akun admin', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     conn.execute('DELETE FROM users WHERE id=?', (aid,))
     conn.commit(); conn.close()
     flash('Asprak berhasil dihapus', 'success')
     cid = request.form.get('course_id')
-    return redirect(url_for('asprak_dashboard', course_id=cid))
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab=request.form.get('tab') or request.args.get('tab')))
 
 # ======== MODULE MANAGEMENT ========
 @app.route('/asprak/module/toggle_status', methods=['POST'])
 def toggle_module_status():
     if 'role' not in session or session['role'] != 'ASPRAK':
         return redirect(url_for('asprak_login'))
-    if not is_admin_user(session.get('user_id')):
-        flash('Hanya Admin yang dapat membuka/tutup pengumpulan', 'error'); return redirect(url_for('asprak_dashboard'))
+    conn = get_db()
+    user = conn.execute('SELECT is_co_asprak FROM users WHERE id=?', (session['user_id'],)).fetchone()
+    if not user or not user['is_co_asprak']:
+        flash('Hanya Co-Asprak yang dapat membuka/tutup pengumpulan', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     mid = request.form.get('module_id'); cs = request.form.get('current_status', type=int)
     ns = 0 if cs == 1 else 1
-    conn = get_db(); conn.execute('UPDATE modules SET is_open=? WHERE id=?', (ns, mid)); conn.commit(); conn.close()
+    conn.execute('UPDATE modules SET is_open=? WHERE id=?', (ns, mid)); conn.commit(); conn.close()
     flash(f'Pengumpulan modul berhasil {"dibuka" if ns else "ditutup"}!', 'success')
-    return redirect(url_for('asprak_dashboard'))
+    return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
 
 @app.route('/asprak/module/add', methods=['POST'])
 def add_module():
     if 'role' not in session or session['role'] != 'ASPRAK':
         return redirect(url_for('asprak_login'))
-    if not is_admin_user(session.get('user_id')):
-        flash('Hanya Admin yang dapat menambah modul', 'error'); return redirect(url_for('asprak_dashboard'))
+    conn = get_db()
+    user = conn.execute('SELECT is_co_asprak FROM users WHERE id=?', (session['user_id'],)).fetchone()
+    if not user or not user['is_co_asprak']:
+        flash('Hanya Co-Asprak yang dapat menambah modul', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     name = request.form.get('name'); desc = request.form.get('description')
+    deadline = request.form.get('deadline') or None
     cid = request.form.get('course_id', type=int)
     if name and cid:
-        conn = get_db(); conn.execute('INSERT INTO modules (name, description, is_open, course_id) VALUES (?,?,1,?)', (name, desc, cid))
+        conn.execute('INSERT INTO modules (name, description, is_open, deadline, course_id) VALUES (?,?,1,?,?)', (name, desc, deadline, cid))
         conn.commit(); conn.close(); flash(f'Modul {name} berhasil ditambahkan', 'success')
-    return redirect(url_for('asprak_dashboard', course_id=cid))
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab=request.form.get('tab') or request.args.get('tab')))
 
 @app.route('/asprak/module/edit', methods=['POST'])
 def edit_module():
     if 'role' not in session or session['role'] != 'ASPRAK':
         return redirect(url_for('asprak_login'))
-    if not is_admin_user(session.get('user_id')):
-        flash('Hanya Admin yang dapat mengedit modul', 'error'); return redirect(url_for('asprak_dashboard'))
+    conn = get_db()
+    user = conn.execute('SELECT is_co_asprak FROM users WHERE id=?', (session['user_id'],)).fetchone()
+    if not user or not user['is_co_asprak']:
+        flash('Hanya Co-Asprak yang dapat mengedit modul', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     mid = request.form.get('module_id'); name = request.form.get('name'); desc = request.form.get('description')
-    conn = get_db(); conn.execute('UPDATE modules SET name=?, description=? WHERE id=?', (name, desc, mid)); conn.commit(); conn.close()
+    deadline = request.form.get('deadline') or None
+    conn.execute('UPDATE modules SET name=?, description=?, deadline=? WHERE id=?', (name, desc, deadline, mid)); conn.commit(); conn.close()
     flash('Modul berhasil diperbarui', 'success')
-    return redirect(url_for('asprak_dashboard'))
+    return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
+
+@app.route('/asprak/module/delete', methods=['POST'])
+def delete_module():
+    if 'role' not in session or session['role'] != 'ASPRAK':
+        return redirect(url_for('asprak_login'))
+    conn = get_db()
+    user = conn.execute('SELECT is_co_asprak FROM users WHERE id=?', (session['user_id'],)).fetchone()
+    if not user or not user['is_co_asprak']:
+        flash('Hanya Co-Asprak yang dapat menghapus modul', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
+    mid = request.form.get('module_id')
+    subs = conn.execute('SELECT * FROM submissions WHERE module_id=?', (mid,)).fetchall()
+    for sub in subs:
+        try: os.remove(os.path.join(app.config['UPLOAD_FOLDER'], sub['file_path']))
+        except: pass
+    conn.execute('DELETE FROM submissions WHERE module_id=?', (mid,))
+    conn.execute('DELETE FROM grades WHERE module_id=?', (mid,))
+    conn.execute('DELETE FROM modules WHERE id=?', (mid,))
+    conn.commit(); conn.close()
+    flash('Modul berhasil dihapus', 'success')
+    return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
 
 @app.route('/asprak/submissions/delete/<int:id>', methods=['POST'])
 def delete_submission(id):
@@ -442,7 +491,7 @@ def delete_submission(id):
         conn.execute('DELETE FROM submissions WHERE id=?', (id,)); conn.commit()
         flash('Pengumpulan berhasil dihapus', 'success')
     conn.close()
-    return redirect(url_for('asprak_dashboard'))
+    return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
 
 @app.route('/uploads/<name>')
 def download_file(name):
@@ -462,7 +511,7 @@ def add_praktikan():
                      (name, 'PRAKTIKAN', gid, None, cid, 0, 0, 0))
         conn.commit(); conn.close()
         flash(f'Praktikan "{name}" berhasil ditambahkan ke Kel {gid}!', 'success')
-    return redirect(url_for('asprak_dashboard', course_id=cid))
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab=request.form.get('tab') or request.args.get('tab')))
 
 @app.route('/asprak/praktikan/edit_group', methods=['POST'])
 def edit_praktikan_group():
@@ -476,13 +525,28 @@ def edit_praktikan_group():
         conn.execute('UPDATE users SET group_id=? WHERE id=?', (new_gid, pid))
         conn.commit(); conn.close()
         flash('Kelompok praktikan berhasil diubah!', 'success')
-    return redirect(url_for('asprak_dashboard', course_id=cid))
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab=request.form.get('tab') or request.args.get('tab')))
+
+@app.route('/asprak/praktikan/delete', methods=['POST'])
+def delete_praktikan():
+    if 'role' not in session or session['role'] != 'ASPRAK':
+        return redirect(url_for('asprak_login'))
+    pid = request.form.get('praktikan_id', type=int)
+    cid = request.form.get('course_id', type=int)
+    if pid:
+        conn = get_db()
+        conn.execute('DELETE FROM users WHERE id=? AND role="PRAKTIKAN"', (pid,))
+        conn.execute('DELETE FROM grades WHERE praktikan_id=?', (pid,))
+        conn.commit()
+        conn.close()
+        flash('Praktikan berhasil dihapus', 'success')
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab=request.form.get('tab') or request.args.get('tab')))
 
 # ======== ADMIN: CO-ASPRAK TOGGLE ========
 @app.route('/admin/asprak/toggle_co', methods=['POST'])
 def toggle_co_asprak():
     if not is_admin_user(session.get('user_id')):
-        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard'))
+        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     aid = request.form.get('asprak_id', type=int)
     conn = get_db()
     a = conn.execute('SELECT is_co_asprak FROM users WHERE id=?', (aid,)).fetchone()
@@ -493,13 +557,13 @@ def toggle_co_asprak():
         flash(f'Status Co-Asprak berhasil {"diaktifkan" if nv else "dinonaktifkan"}!', 'success')
     cid = request.form.get('course_id')
     conn.close()
-    return redirect(url_for('asprak_dashboard', course_id=cid))
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab=request.form.get('tab') or request.args.get('tab')))
 
 # ======== ADMIN: ASSIGN ASPRAK TO COURSE ========
 @app.route('/admin/asprak/assign_course', methods=['POST'])
 def assign_asprak_course():
     if not is_admin_user(session.get('user_id')):
-        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard'))
+        flash('Akses ditolak', 'error'); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     aid = request.form.get('asprak_id', type=int)
     cid = request.form.get('new_course_id', type=int)
     if aid and cid:
@@ -507,7 +571,7 @@ def assign_asprak_course():
         conn.execute('UPDATE users SET course_id=? WHERE id=?', (cid, aid))
         conn.commit(); conn.close()
         flash('Asprak berhasil dipindah ke praktikum baru!', 'success')
-    return redirect(url_for('asprak_dashboard', course_id=cid))
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab=request.form.get('tab') or request.args.get('tab')))
 
 # ======== CO-ASPRAK: SET DRIVE LINK ========
 @app.route('/asprak/set_drive_link', methods=['POST'])
@@ -519,7 +583,7 @@ def set_drive_link():
     if not (user['is_co_asprak'] or user['is_admin']):
         flash('Hanya Co-Asprak atau Admin yang dapat mengatur Drive folder', 'error')
         conn.close()
-        return redirect(url_for('asprak_dashboard'))
+        return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     cid = request.form.get('course_id', type=int)
     link = request.form.get('drive_link', '').strip()
     if cid:
@@ -527,7 +591,7 @@ def set_drive_link():
         conn.commit()
         flash('Link Google Drive berhasil disimpan!' if link else 'Link Google Drive dihapus.', 'success')
     conn.close()
-    return redirect(url_for('asprak_dashboard', course_id=cid))
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab=request.form.get('tab') or request.args.get('tab')))
 
 # ======== VIEWER ========
 @app.route('/viewer/login', methods=['GET', 'POST'])
@@ -579,4 +643,4 @@ def viewer_dashboard():
     return render_template('viewer.html', courses=courses, sel_course=sel_course, modules=modules, submissions=submissions, praktikans=praktikans, grade_legend=GRADE_LEGEND, calculate_module_avg=calculate_module_avg)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', debug=True, port=5000)

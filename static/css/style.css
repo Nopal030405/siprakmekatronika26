@@ -118,18 +118,21 @@ body {
    ============================ */
 header {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
     padding: 1.5rem 0;
     margin-bottom: 2rem;
+    text-align: center;
+    gap: 1rem;
 }
 
 header h1 {
-    font-size: 1.3rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--primary);
     letter-spacing: -0.5px;
-    white-space: nowrap;
+    margin: 0;
 }
 
 .nav-links {
@@ -347,6 +350,16 @@ select.form-control {
     padding-right: 2rem;
 }
 
+/* Remove spinners from number inputs globally */
+input[type="number"]::-webkit-inner-spin-button, 
+input[type="number"]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+input[type="number"] {
+    -moz-appearance: textfield; /* Firefox */
+}
+
 /* ============================
    FLASH MESSAGES
    ============================ */
@@ -492,6 +505,15 @@ tbody tr:last-child td {
     animation: fadeIn 0.5s ease forwards;
 }
 
+.page-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
 /* ============================
    SCROLLBAR (dark mode only)
    ============================ */
@@ -514,9 +536,10 @@ tbody tr:last-child td {
    ============================ */
 .site-footer {
     margin-top: 3rem;
-    padding: 2rem 0 1rem;
+    padding: 2.5rem 0 1rem;
     border-top: 1px solid var(--table-border);
     background: var(--bg-surface);
+    width: 100%;
 }
 
 .footer-container {
@@ -528,6 +551,7 @@ tbody tr:last-child td {
     justify-content: center;
     gap: 3rem;
     flex-wrap: wrap;
+    text-align: center;
 }
 
 .footer-dev, .footer-sponsor {
@@ -760,11 +784,11 @@ tbody tr:last-child td {
         font-size: 0.75rem;
     }
 
-    /* Grade inputs smaller on mobile */
+    /* Grade inputs smaller on mobile but wide enough for 3 digits */
     .grade-table input[type="number"] {
-        width: 38px !important;
-        padding: 0.2rem !important;
-        font-size: 0.7rem !important;
+        width: 52px !important;
+        padding: 0.25rem !important;
+        font-size: 0.75rem !important;
     }
 
     .grade-table input[type="text"] {

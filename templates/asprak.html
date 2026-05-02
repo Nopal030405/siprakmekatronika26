@@ -1,26 +1,58 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="margin-bottom: 1.5rem;">
-    <h2 style="font-size: 1.8rem; color: var(--primary);">Dashboard Asprak</h2>
-    <form method="GET" action="{{ url_for('asprak_dashboard') }}" style="display:flex; align-items:center; gap:0.75rem; margin-top:0.75rem; flex-wrap:wrap;">
+<div class="page-header">
+    <h2 style="font-size: 1.8rem; color: var(--primary); margin: 0;">{% if admin %}Dashboard Admin{% elif is_co_asprak %}Dashboard Co-Asprak{% else %}Dashboard Asprak{% endif %}</h2>
+    {% if not admin and courses|length <= 1 %}
+    <div style="display:flex; align-items:center; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
         <label style="font-weight:600; color:var(--text-muted); font-size:0.85rem;">Mata Kuliah:</label>
-        <select name="course_id" class="form-control" style="width:auto; min-width:200px;" onchange="this.form.submit()">
+        <span style="font-weight:700; color:var(--text-heading); font-size:1.1rem;">{% for c in courses %}{{ c.name }}{% endfor %}</span>
+    </div>
+    {% else %}
+    <form method="GET" action="{{ url_for('asprak_dashboard', tab=active_tab) }}" style="display:flex; align-items:center; justify-content:center; gap:0.75rem; flex-wrap:wrap; width:100%;">
+        <input type="hidden" name="tab" value="{{ active_tab }}">
+        <label style="font-weight:600; color:var(--text-muted); font-size:0.85rem;">Mata Kuliah:</label>
+        <select name="course_id" class="form-control" style="width:auto; min-width:240px; text-align-last: center;" onchange="this.form.submit()">
             {% for c in courses %}
             <option value="{{ c.id }}" {% if c.id == sel_course %}selected{% endif %}>{{ c.name }}</option>
             {% endfor %}
         </select>
     </form>
+    {% endif %}
 </div>
+
+
+{% if admin %}
+<div class="tabs-nav glass-panel" style="display:flex; justify-content:center; gap:0.5rem; margin-bottom:1.5rem; padding:0.75rem; width:100%; border-radius:15px;">
+    <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='gdrive') }}" class="btn {% if active_tab == 'gdrive' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Google Drive">📁</a>
+    <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='manage_asprak') }}" class="btn {% if active_tab == 'manage_asprak' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Tambah Data">👤</a>
+    <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='data_asprak') }}" class="btn {% if active_tab == 'data_asprak' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Data Asprak">📋</a>
+</div>
+{% endif %}
+{% if not admin %}
+<div class="tabs-nav glass-panel" style="display:flex; justify-content:center; gap:0.5rem; margin-bottom:1.5rem; padding:0.75rem; width:100%; border-radius:15px; flex-wrap:wrap;">
+    <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='grading') }}" class="btn {% if active_tab == 'grading' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Penilaian Praktikan">📝</a>
+    {% if is_co_asprak %}
+    <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='manage_module') }}" class="btn {% if active_tab == 'manage_module' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Kelola Modul">📚</a>
+    {% endif %}
+    {% if course_drive_link %}
+    <a href="{{ course_drive_link }}" target="_blank" class="btn btn-secondary" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center; border: 1px solid var(--primary); color: var(--primary);" title="Cek Pengumpulan GDrive">📁</a>
+    {% endif %}
+    {% if active_tab == 'grading' %}
+    <button type="button" id="btn-toggle-total" class="btn btn-secondary" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" onclick="toggleCol('total')" title="Tampilkan/Sembunyikan Nilai Akhir">💯</button>
+    {% endif %}
+</div>
+{% endif %}
 
 <div class="grid" style="grid-template-columns: 1fr;">
 
-    {% if admin %}
+
+    {% if active_tab == 'manage_asprak' and admin %}
     <div class="card glass-panel" style="border-left: 3px solid var(--primary);">
         <h3 class="card-title">⚙️ Panel Admin <span style="font-size:0.7rem; background:var(--primary-light); color:var(--primary); padding:0.15rem 0.5rem; border-radius:999px; font-weight:600;">ADMIN</span></h3>
         <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
             <div>
                 <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">📚 Tambah Mata Kuliah</h4>
-                <form method="POST" action="{{ url_for('add_course') }}">
+                <form method="POST" action="{{ url_for('add_course', tab=active_tab) }}">
                     <div class="form-group"><label>Nama MK</label><input type="text" name="course_name" class="form-control" placeholder="Contoh: Pengolahan Citra" required></div>
                     <div class="form-group"><label>Deskripsi</label><input type="text" name="course_desc" class="form-control" placeholder="Keterangan..."></div>
                     <button type="submit" class="btn btn-primary" style="width:100%; font-size:0.8rem;">+ Tambah MK</button>
@@ -28,7 +60,7 @@
             </div>
             <div>
                 <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">👤 Tambah Asprak Baru</h4>
-                <form method="POST" action="{{ url_for('add_asprak') }}">
+                <form method="POST" action="{{ url_for('add_asprak', tab=active_tab) }}">
                     <div class="form-group"><label>Nama</label><input type="text" name="asprak_name" class="form-control" placeholder="Nama asprak" required></div>
                     <div class="form-group"><label>Password</label><input type="text" name="asprak_password" class="form-control" placeholder="Password" required></div>
                     <div class="form-group">
@@ -46,7 +78,74 @@
             </div>
         </div>
 
-        <div style="margin-top: 2rem; border-top: 1px solid var(--table-border); padding-top: 1.5rem;">
+        </div>
+    </div>
+
+    {% endif %}
+{% if active_tab == "manage_module" and is_co_asprak %}
+<div class="card glass-panel" style="border-left: 3px solid var(--warning); margin-top: 1.5rem;">
+        <h3 class="card-title">📚 Kelola Modul</h3>
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div>
+                <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">➕ Tambah Modul Baru</h4>
+                <form method="POST" action="{{ url_for('add_module', tab=active_tab) }}">
+                    <input type="hidden" name="course_id" value="{{ sel_course }}">
+                    <div class="form-group">
+                        <label>Nama Modul</label>
+                        <input type="text" name="name" class="form-control" placeholder="Contoh: Modul 1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Deskripsi / Topik</label>
+                        <input type="text" name="description" class="form-control" placeholder="Keterangan singkat">
+                    </div>
+                    <div class="form-group">
+                        <label>Batas Waktu (Deadline)</label>
+                        <input type="datetime-local" name="deadline" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%; font-size:0.8rem;">+ Tambah Modul</button>
+                </form>
+            </div>
+            <div>
+                <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">✏️ Edit Modul</h4>
+                <form method="POST" action="{{ url_for('edit_module', tab=active_tab) }}" style="margin-bottom: 0.5rem;">
+                    <div class="form-group">
+                        <label>Pilih Modul</label>
+                        <select name="module_id" class="form-control" onchange="updateEditForm(this)" required>
+                            <option value="">-- Pilih Modul --</option>
+                            {% for m in modules %}
+                            <option value="{{ m.id }}" data-name="{{ m.name }}" data-desc="{{ m.description }}" data-deadline="{{ m.deadline }}" data-open="{{ m.is_open }}">{{ m.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" name="name" id="edit_name" class="form-control" placeholder="Nama baru" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" name="description" id="edit_desc" class="form-control" placeholder="Deskripsi baru">
+                    </div>
+                    <div class="form-group">
+                        <label>Batas Waktu</label>
+                        <input type="datetime-local" name="deadline" id="edit_deadline" class="form-control">
+                    </div>
+                    <div style="display:flex; gap:0.5rem; width:100%;">
+                        <button type="submit" class="btn btn-secondary" style="flex:1; font-size:0.8rem;">💾 Simpan Perubahan</button>
+                        <button type="button" class="btn btn-danger" style="padding:0; width:40px; flex-shrink:0; opacity:0.5; cursor:not-allowed;" id="deleteModuleBtn" onclick="confirmDeleteModule()" title="Hapus Modul" disabled>🗑</button>
+                    </div>
+                </form>
+                
+                <form method="POST" action="{{ url_for('toggle_module_status', tab=active_tab) }}">
+                    <input type="hidden" name="module_id" id="toggle_module_id">
+                    <input type="hidden" name="current_status" id="toggle_current_status">
+                    <button type="submit" id="toggleBtn" class="btn btn-secondary" style="display:none; width:100%; font-size:0.8rem; margin-top:0.5rem;">Toggle Pengumpulan</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    
+{% if active_tab == 'data_asprak' and admin %}
+<div class="card glass-panel" style="border-left: 3px solid var(--primary); margin-top: 1.5rem;">
             <h4 style="margin-bottom:1rem; color:var(--primary); font-size:0.95rem; display:flex; align-items:center; gap:0.5rem;">
                 <span>✏️</span> Kelola Akun Asprak
             </h4>
@@ -56,11 +155,11 @@
                 {% if not a.is_admin %}
                 <div class="management-bar">
                     <div class="management-info" style="gap: 0.75rem;">
-                        <form method="POST" action="{{ url_for('edit_asprak') }}" style="display:flex; gap:0.4rem; align-items:center; flex:2; min-width: 250px;">
+                        <form method="POST" action="{{ url_for('edit_asprak', tab=active_tab) }}" style="display:flex; gap:0.4rem; align-items:center; flex:2; min-width: 250px;">
                             <input type="hidden" name="asprak_id" value="{{ a.id }}">
                             <input type="hidden" name="course_id" value="{{ sel_course }}">
                             <input type="text" name="edit_asprak_name" value="{{ a.name }}" class="form-control" style="padding:0.35rem 0.6rem; font-size:0.85rem; font-weight:700; flex:2; min-width:120px;" placeholder="Nama Asprak" required>
-                            <input type="text" name="edit_asprak_password" placeholder="Pwd Baru" class="form-control" style="padding:0.35rem 0.6rem; font-size:0.8rem; width:100px; flex:1;" title="Ganti Password">
+                            <input type="text" name="edit_asprak_password" value="{{ a.password }}" class="form-control" style="padding:0.35rem 0.6rem; font-size:0.8rem; width:100px; flex:1;" title="Ganti Password">
                             <button type="submit" class="btn btn-secondary" style="padding:0; width:34px; height:34px; flex-shrink:0;" title="Simpan Perubahan">💾</button>
                         </form>
                         
@@ -69,7 +168,7 @@
                                 {% for c in courses %}{% if c.id == a.course_id %}{{ c.name }}{% endif %}{% endfor %}
                             </div>
                             
-                            <form method="POST" action="{{ url_for('assign_asprak_course') }}" style="display:flex; gap:0.2rem; align-items:center;">
+                            <form method="POST" action="{{ url_for('assign_asprak_course', tab=active_tab) }}" style="display:flex; gap:0.2rem; align-items:center;">
                                 <input type="hidden" name="asprak_id" value="{{ a.id }}">
                                 <input type="hidden" name="course_id" value="{{ sel_course }}">
                                 <select name="new_course_id" class="form-control" style="padding:0 0.5rem; font-size:0.75rem; width:110px; height:34px;">
@@ -81,7 +180,7 @@
                     </div>
 
                     <div class="management-actions" style="margin-left: auto;">
-                        <form method="POST" action="{{ url_for('toggle_co_asprak') }}">
+                        <form method="POST" action="{{ url_for('toggle_co_asprak', tab=active_tab) }}">
                             <input type="hidden" name="asprak_id" value="{{ a.id }}">
                             <input type="hidden" name="course_id" value="{{ sel_course }}">
                             <button type="submit" class="btn {% if a.is_co_asprak %}btn-success{% else %}btn-secondary{% endif %}" style="padding:0 0.75rem; height:34px; font-size:0.8rem; font-weight:700;">
@@ -89,10 +188,10 @@
                             </button>
                         </form>
                         
-                        <form method="POST" action="{{ url_for('delete_asprak') }}" onsubmit="return confirm('Hapus akun {{ a.name }}?');">
+                        <form id="deleteAsprakForm_{{ a.id }}" method="POST" action="{{ url_for('delete_asprak', tab=active_tab) }}">
                             <input type="hidden" name="asprak_id" value="{{ a.id }}">
                             <input type="hidden" name="course_id" value="{{ sel_course }}">
-                            <button type="submit" class="btn btn-danger" style="padding:0; width:34px; height:34px;">🗑</button>
+                            <button type="button" class="btn btn-danger" style="padding:0; width:34px; height:34px;" onclick="confirmDeleteAsprak('{{ a.id }}')">🗑</button>
                         </form>
                     </div>
                 </div>
@@ -100,13 +199,12 @@
                 {% endfor %}
             </div>
         </div>
-    </div>
-    {% endif %}
-
-    {% if admin or is_co_asprak %}
+{% endif %}
+{% if active_tab == "gdrive" and admin %}
     <div class="card glass-panel" style="border-left: 3px solid var(--secondary);">
         <h3 class="card-title">🔗 Link Folder Google Drive</h3>
-        <form method="POST" action="{{ url_for('set_drive_link') }}" style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
+
+        <form method="POST" action="{{ url_for('set_drive_link', tab=active_tab) }}" style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
             <input type="hidden" name="course_id" value="{{ sel_course }}">
             <div class="form-group" style="margin-bottom:0; flex:1; min-width:300px;">
                 <label style="font-size:0.8rem;">URL Folder Drive</label>
@@ -122,58 +220,72 @@
     </div>
     {% endif %}
 
-    <div class="card glass-panel">
+    {% if active_tab == 'grading' and not admin %}
+<div class="card glass-panel">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
             <h3 class="card-title" style="margin-bottom:0;">📝 Penilaian Praktikan</h3>
             <div style="display:flex; gap:0.5rem;">
-                <a href="{{ url_for('export_excel', course_id=sel_course) }}" class="btn btn-secondary" style="font-size:0.85rem;">📥 Cetak Excel</a>
+                <a href="{{ url_for('export_excel', course_id=sel_course, tab=active_tab) }}" class="btn btn-secondary" style="font-size:0.85rem;">📥 Cetak Excel</a>
                 <button type="submit" form="batchGradeForm" class="btn btn-primary" style="font-size:0.85rem;">🚀 Simpan Semua</button>
             </div>
         </div>
 
-        <form id="batchGradeForm" method="POST" action="{{ url_for('asprak_grade_batch') }}">
+        <form method="POST" action="{{ url_for('add_praktikan', tab=active_tab) }}" style="display:flex; gap:0.75rem; margin-bottom:1rem; align-items:center; background:var(--primary-light); padding:1rem; border-radius:var(--radius-sm); flex-wrap:wrap;">
+            <input type="hidden" name="course_id" value="{{ sel_course }}">
+            <div style="font-weight:600; font-size:0.9rem; color:var(--primary); white-space:nowrap;">➕ Tambah Praktikan:</div>
+            <input type="text" name="new_praktikan_name" class="form-control" style="flex:2; min-width:150px; padding:0.4rem 0.6rem; font-size:0.85rem;" placeholder="Nama Praktikan" required>
+            <input type="number" name="new_praktikan_group" class="form-control" style="width:80px; padding:0.4rem; text-align:center; font-size:0.85rem;" placeholder="Kel" min="1" required>
+            <button type="submit" class="btn btn-primary" style="padding:0.4rem 0.8rem; font-size:0.85rem; white-space:nowrap;">Tambah</button>
+        </form>
+
+        <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;" id="module-toggles">
+            {% for m in modules %}
+            <button type="button" class="btn btn-secondary btn-modul-toggle" id="btn-modul-{{ m.id }}" onclick="toggleModul('{{ m.id }}')" style="border-radius:20px; font-size:0.85rem; padding:0.4rem 1rem;">{{ m.name }}</button>
+            {% endfor %}
+        </div>
+
+        <form id="batchGradeForm" method="POST" action="{{ url_for('asprak_grade_batch', tab=active_tab) }}">
             <input type="hidden" name="course_id" value="{{ sel_course }}">
             <div class="table-responsive">
                 <table class="grade-table">
                     <thead>
                         <tr>
                             <th>Kel.</th>
-                            <th>Nama Praktikan</th>
-                            <th>Pindah Kel.</th>
+                            <th style="min-width: 150px;">Nama Praktikan</th>
                             {% for m in modules %}
-                                <th style="text-align:center;">{{ m.name }}<br><small>(TP/Prak/Modul)</small></th>
+                                <th style="text-align:center;" class="col-modul col-modul-{{ m.id }}">{{ m.name }}<br><small>(TP/Prak/Modul)</small></th>
                             {% endfor %}
-                            <th style="text-align:center;">Buku</th>
-                            <th style="text-align:center;">Total</th>
-                            <th style="text-align:center;">Huruf</th>
+                            <th style="text-align:center;" class="col-buku hide-col">Buku</th>
+                            <th style="text-align:center;" class="col-total hide-col">Total</th>
+                            <th style="text-align:center;" class="col-huruf hide-col">Huruf</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for p in praktikans %}
                         <tr>
-                            <td style="font-weight:600;">{{ p.group_id }}</td>
-                            <td><input type="text" name="praktikan_name_{{ p.id }}" value="{{ p.name }}" class="form-control" style="border:none; background:transparent; font-weight:600; width:100%;"></td>
                             <td>
                                 <div style="display:flex; gap:0.2rem; align-items:center;">
-                                    <input type="number" id="group_input_{{ p.id }}" value="{{ p.group_id }}" class="form-control" style="width:50px; text-align:center;" min="1">
-                                    <button type="button" onclick="changeGroup('{{ p.id }}', '{{ sel_course }}')" class="btn btn-secondary" style="padding:0.15rem 0.35rem;">↕</button>
+                                    <input type="number" id="group_input_{{ p.id }}" value="{{ p.group_id }}" class="form-control" style="width:40px; text-align:center; padding:0.2rem;" min="1">
+                                    <button type="button" onclick="changeGroup('{{ p.id }}', '{{ sel_course }}')" class="btn btn-secondary" style="padding:0.15rem 0.3rem;" title="Pindah Kel">↕</button>
+                                    <button type="button" onclick="deletePraktikan('{{ p.id }}', '{{ sel_course }}')" class="btn btn-danger" style="padding:0.15rem 0.3rem;" title="Hapus">🗑</button>
                                 </div>
                             </td>
+                            <td><input type="text" name="praktikan_name_{{ p.id }}" value="{{ p.name }}" class="form-control" style="border:none; background:transparent; font-weight:600; width:100%; min-width: 120px;"></td>
                             {% for m in modules %}
                                 {% set g = p.grades.get(m.id, {'tp_score':0,'praktikum_score':0,'modul_score':0}) %}
-                                <td style="min-width:190px;">
-                                    <div style="display:flex; gap:0.2rem; justify-content:center;">
-                                        <input type="number" name="tp_score_{{ p.id }}_{{ m.id }}" value="{{ g.tp_score }}" class="form-control" style="width:45px; text-align:center;" min="0" max="100">
-                                        <input type="number" name="praktikum_score_{{ p.id }}_{{ m.id }}" value="{{ g.praktikum_score }}" class="form-control" style="width:45px; text-align:center;" min="0" max="100">
-                                        <input type="number" name="modul_score_{{ p.id }}_{{ m.id }}" value="{{ g.modul_score }}" class="form-control" style="width:45px; text-align:center;" min="0" max="100">
+                                <td style="min-width:210px;" class="col-modul col-modul-{{ m.id }}">
+                                    <div style="display:flex; gap:0.3rem; justify-content:center;">
+                                        <input type="number" name="tp_score_{{ p.id }}_{{ m.id }}" value="{{ g.tp_score }}" class="form-control" style="width:60px; padding:0.4rem; text-align:center;" min="0" max="100" title="TP">
+                                        <input type="number" name="praktikum_score_{{ p.id }}_{{ m.id }}" value="{{ g.praktikum_score }}" class="form-control" style="width:60px; padding:0.4rem; text-align:center;" min="0" max="100" title="Prak">
+                                        <input type="number" name="modul_score_{{ p.id }}_{{ m.id }}" value="{{ g.modul_score }}" class="form-control" style="width:60px; padding:0.4rem; text-align:center;" min="0" max="100" title="Modul">
                                     </div>
                                 </td>
                             {% endfor %}
-                            <td>
-                                <input type="number" name="pembukuan_{{ p.id }}" value="{{ p.pembukuan_score|default(0) }}" class="form-control" style="width:50px; margin:0 auto; text-align:center;" min="0" max="100">
+                            <td style="min-width: 80px;" class="col-buku hide-col">
+                                <input type="number" name="pembukuan_{{ p.id }}" value="{{ p.pembukuan_score|default(0) }}" class="form-control" style="width:60px; padding:0.4rem; margin:0 auto; text-align:center;" min="0" max="100">
                             </td>
-                            <td style="text-align:center; font-weight:700;">{{ p.total }}</td>
-                            <td style="text-align:center;">
+                            <td style="text-align:center; font-weight:700;" class="col-total hide-col">{{ p.total }}</td>
+                            <td style="text-align:center;" class="col-huruf hide-col">
                                 <span class="badge-letter" data-letter="{{ p.letter }}">{{ p.letter }}</span>
                             </td>
                         </tr>
@@ -185,17 +297,113 @@
     </div>
 </div>
 
-<form id="groupChangeForm" method="POST" action="{{ url_for('edit_praktikan_group') }}" style="display:none;">
+{% endif %}
+
+<form id="groupChangeForm" method="POST" action="{{ url_for('edit_praktikan_group', tab=active_tab) }}" style="display:none;">
     <input type="hidden" name="praktikan_id" id="gc_praktikan_id">
     <input type="hidden" name="course_id" id="gc_course_id">
     <input type="hidden" name="new_group_id" id="gc_new_group_id">
 </form>
 
+<form id="deletePraktikanForm" method="POST" action="{{ url_for('delete_praktikan', tab=active_tab) }}" style="display:none;">
+    <input type="hidden" name="praktikan_id" id="del_praktikan_id">
+    <input type="hidden" name="course_id" id="del_course_id">
+</form>
+
+<form id="deleteModuleForm" method="POST" action="{{ url_for('delete_module', tab=active_tab) }}" style="display:none;">
+    <input type="hidden" name="module_id" id="del_module_id">
+</form>
+
 <script>
+let showTotal = false;
+
+function toggleCol(type) {
+    if (type === 'total') {
+        showTotal = !showTotal;
+        document.querySelectorAll('.col-buku, .col-total, .col-huruf').forEach(el => {
+            if(showTotal) el.classList.remove('hide-col');
+            else el.classList.add('hide-col');
+        });
+        const btn = document.getElementById('btn-toggle-total');
+        if(btn) {
+            if(showTotal) { btn.classList.remove('btn-secondary'); btn.classList.add('btn-primary'); }
+            else { btn.classList.remove('btn-primary'); btn.classList.add('btn-secondary'); }
+        }
+    }
+}
+
+function toggleModul(modulId) {
+    document.querySelectorAll('.col-modul').forEach(el => el.classList.add('hide-col'));
+    document.querySelectorAll('.btn-modul-toggle').forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-secondary');
+    });
+    
+    document.querySelectorAll('.col-modul-' + modulId).forEach(el => el.classList.remove('hide-col'));
+    const btn = document.getElementById('btn-modul-' + modulId);
+    if(btn) {
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    {% if active_tab == 'grading' %}
+    // Cek jika layar HP (lebar < 768px)
+    if (window.innerWidth < 768) {
+        const desktopPrompt = document.createElement('div');
+        desktopPrompt.id = 'desktop-mode-prompt';
+        desktopPrompt.innerHTML = `
+            <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:10000; animation:fadeIn 0.3s ease;"></div>
+            <div class="glass-panel animate-fade" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:85%; max-width:320px; padding:2rem; text-align:center; z-index:10001; border:1px solid var(--primary); box-shadow: var(--shadow-lg);">
+                <div style="font-size:3.5rem; margin-bottom:1rem;">📱 ➔ 🖥️</div>
+                <h3 style="color:var(--primary); margin-bottom:0.75rem; font-weight:700;">Mode Desktop</h3>
+                <p style="font-size:0.9rem; color:var(--text-main); line-height:1.5; margin-bottom:1.5rem;">
+                    Halaman penilaian ini memiliki tabel yang cukup lebar. Aktifkan fitur <b>"Situs Desktop"</b> di browser HP Anda agar penginputan nilai lebih mudah dan rapi.
+                </p>
+                <button class="btn btn-primary" onclick="document.getElementById('desktop-mode-prompt').remove()" style="width:100%; border-radius:12px; padding:0.8rem;">Saya Mengerti</button>
+            </div>
+        `;
+        document.body.appendChild(desktopPrompt);
+    }
+    {% endif %}
+
+    {% if modules and modules|length > 0 %}
+    toggleModul('{{ modules[0].id }}');
+    {% endif %}
+});
+
+/**
+ * Fungsi untuk konfirmasi hapus Asprak
+ */
+function confirmDeleteAsprak(aId) {
+    showConfirmModal('Hapus akun asprak ini?', function() {
+        document.getElementById('deleteAsprakForm_' + aId).submit();
+    });
+}
+
+/**
+ * Fungsi untuk menghapus praktikan
+ */
+function deletePraktikan(pId, cId) {
+    showConfirmModal('Hapus praktikan ini?', function() {
+        document.getElementById('del_praktikan_id').value = pId;
+        document.getElementById('del_course_id').value = cId;
+        document.getElementById('deletePraktikanForm').submit();
+    });
+}
+
+/**
+ * Fungsi untuk menghapus modul
+ */
+function confirmDeleteModule() {
+    showConfirmModal('Hapus modul ini beserta semua data pengumpulan dan nilainya?', function() {
+        document.getElementById('deleteModuleForm').submit();
+    });
+}
+
 /**
  * Fungsi untuk mengubah kelompok praktikan
- * @param {string} pId - ID Praktikan
- * @param {string} cId - ID Mata Kuliah
  */
 function changeGroup(pId, cId) {
     const newG = document.getElementById('group_input_' + pId).value;
@@ -212,26 +420,52 @@ function changeGroup(pId, cId) {
  */
 function updateEditForm(s) {
     const o = s.options[s.selectedIndex];
-    if (!o.value) return;
+    const tb = document.getElementById('toggleBtn');
+    const db = document.getElementById('deleteModuleBtn');
+    const dFormInput = document.getElementById('del_module_id');
+
+    if (!o.value) {
+        document.getElementById('edit_name').value = '';
+        document.getElementById('edit_desc').value = '';
+        document.getElementById('edit_deadline').value = '';
+        if(db) {
+            db.disabled = true;
+            db.style.opacity = '0.5';
+            db.style.cursor = 'not-allowed';
+        }
+        if(tb) tb.style.display = 'none';
+        if(dFormInput) dFormInput.value = '';
+        return;
+    }
     
     document.getElementById('edit_name').value = o.getAttribute('data-name');
     document.getElementById('edit_desc').value = o.getAttribute('data-desc') || '';
+    document.getElementById('edit_deadline').value = o.getAttribute('data-deadline') && o.getAttribute('data-deadline') !== "None" ? o.getAttribute('data-deadline') : '';
     
     const isOpen = o.getAttribute('data-open') === '1';
-    const tb = document.getElementById('toggleBtn');
     
     document.getElementById('toggle_module_id').value = o.value;
     document.getElementById('toggle_current_status').value = isOpen ? '1' : '0';
+    if(dFormInput) dFormInput.value = o.value;
     
-    tb.style.display = 'block';
-    tb.innerText = isOpen ? '🛑 Tutup Pengumpulan' : '✅ Buka Pengumpulan';
-    tb.className = isOpen ? 'btn btn-danger' : 'btn btn-success';
-    tb.style.width = '100%';
+    if(tb) {
+        tb.style.display = 'block';
+        tb.innerText = isOpen ? '🛑 Tutup Pengumpulan' : '✅ Buka Pengumpulan';
+        tb.className = isOpen ? 'btn btn-danger' : 'btn btn-success';
+        tb.style.width = '100%';
+    }
+    
+    if(db) {
+        db.disabled = false;
+        db.style.opacity = '1';
+        db.style.cursor = 'pointer';
+    }
 }
 </script>
 
 <style>
 /* Perbaikan CSS agar tidak tabrakan dengan Jinja */
+.hide-col { display: none !important; }
 .badge-letter {
     padding: 0.2rem 0.6rem;
     border-radius: 6px;
@@ -248,5 +482,63 @@ function updateEditForm(s) {
     background: var(--danger-bg);
     color: var(--danger);
 }
+/* Custom Modal Style */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+.modal-content {
+    width: 90%;
+    max-width: 350px;
+    padding: 2rem;
+    text-align: center;
+    background: var(--bg-surface);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+}
 </style>
+
+<!-- Custom Confirm Modal -->
+<div id="customConfirmModal" class="modal-overlay" style="display:none;">
+    <div class="modal-content glass-panel">
+        <div style="font-size:2.5rem; margin-bottom:1rem;">⚠️</div>
+        <h3 style="margin-bottom:0.75rem; color:var(--text-heading); font-size:1.2rem;">Konfirmasi Hapus</h3>
+        <p id="confirmModalMessage" style="margin-bottom:1.5rem; color:var(--text-main); font-size:0.95rem;"></p>
+        <div style="display:flex; gap:0.75rem; justify-content:center;">
+            <button type="button" class="btn btn-secondary" onclick="closeConfirmModal()">Batal</button>
+            <button type="button" class="btn btn-danger" id="confirmModalActionBtn">Ya, Hapus</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentConfirmAction = null;
+
+function showConfirmModal(message, actionCallback) {
+    document.getElementById('confirmModalMessage').innerText = message;
+    currentConfirmAction = actionCallback;
+    document.getElementById('customConfirmModal').style.display = 'flex';
+}
+
+function closeConfirmModal() {
+    document.getElementById('customConfirmModal').style.display = 'none';
+    currentConfirmAction = null;
+}
+
+document.getElementById('confirmModalActionBtn').addEventListener('click', function() {
+    if (currentConfirmAction) {
+        currentConfirmAction();
+    }
+    closeConfirmModal();
+});
+</script>
 {% endblock %}
