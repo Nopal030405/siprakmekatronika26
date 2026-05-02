@@ -348,7 +348,8 @@ function toggleModul(modulId) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    {% if active_tab == 'grading' %}
+    const activeTab = "{{ active_tab }}";
+    if (activeTab === 'grading') {
     // Cek jika layar HP (lebar < 768px)
     if (window.innerWidth < 768) {
         const desktopPrompt = document.createElement('div');
@@ -366,11 +367,12 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         document.body.appendChild(desktopPrompt);
     }
-    {% endif %}
+    }
 
-    {% if modules and modules|length > 0 %}
-    toggleModul('{{ modules[0].id }}');
-    {% endif %}
+    const firstModuleId = "{{ modules[0].id if modules else '' }}";
+    if (firstModuleId) {
+        toggleModul(firstModuleId);
+    }
 });
 
 /**

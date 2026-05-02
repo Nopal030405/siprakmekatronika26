@@ -23,16 +23,13 @@
                 {% if current_user %}
                     {% if current_user.role == 'ASPRAK' %}
                         <a href="{{ url_for('asprak_dashboard') }}">Dashboard</a>
-                    {% elif current_user.role == 'VIEWER' %}
-                        <a href="{{ url_for('viewer_dashboard') }}">Dashboard</a>
                     {% endif %}
-                    <span>Halo, {{ current_user.name }}{% if current_user.role == 'VIEWER' %} 🔍{% endif %}</span>
+                    <span>Halo, {{ current_user.name }}</span>
                     <a href="{{ url_for('logout') }}" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Logout</a>
                 {% else %}
                     <a href="{{ url_for('index') }}">Beranda</a>
                     <a href="{{ url_for('praktikan_dashboard') }}">Portal Praktikan</a>
                     <a href="{{ url_for('asprak_login') }}" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Login Asprak</a>
-                    <a href="{{ url_for('viewer_login') }}" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">🔍 Viewer</a>
                 {% endif %}
                 <!-- Dark Mode Toggle -->
                 <div class="theme-toggle" onclick="toggleTheme()" title="Ganti tema terang/gelap">

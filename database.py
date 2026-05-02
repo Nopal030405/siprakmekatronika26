@@ -105,12 +105,6 @@ def init_db():
         c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin, is_co_asprak, pembukuan_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                   ('naufal', 'ASPRAK', 0, 'admin123', course_id, 1, 0, 0))
     
-    # Ensure Viewer account exists
-    viewer = c.execute("SELECT id FROM users WHERE role='VIEWER'").fetchone()
-    if not viewer:
-        c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin, is_co_asprak, pembukuan_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                  ('viewer', 'VIEWER', 0, 'lihat123', None, 0, 0, 0))
-        
     conn.commit()
     conn.close()
 

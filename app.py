@@ -593,54 +593,6 @@ def set_drive_link():
     conn.close()
     return redirect(url_for('asprak_dashboard', course_id=cid, tab=request.form.get('tab') or request.args.get('tab')))
 
-# ======== VIEWER ========
-@app.route('/viewer/login', methods=['GET', 'POST'])
-def viewer_login():
-    if 'role' in session and session['role'] == 'VIEWER':
-        return redirect(url_for('viewer_dashboard'))
-    if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        password = request.form.get('password')
-        conn = get_db()
-        user = conn.execute('SELECT * FROM users WHERE role="VIEWER" AND LOWER(name)=LOWER(?) AND password=?', (name, password)).fetchone()
-        conn.close()
-        if user:
-            session['user_id'] = user['id']
-            session['role'] = 'VIEWER'
-            return redirect(url_for('viewer_dashboard'))
-        else:
-            flash('Login gagal', 'error')
-    return render_template('viewer_login.html')
-
-@app.route('/viewer')
-def viewer_dashboard():
-    if 'role' not in session or session['role'] != 'VIEWER':
-        return redirect(url_for('viewer_login'))
-    conn = get_db()
-    courses = conn.execute('SELECT * FROM courses').fetchall()
-    sel_course = request.args.get('course_id', type=int)
-    if not sel_course and courses:
-        sel_course = courses[0]['id']
-    if not sel_course:
-        conn.close()
-        return render_template('viewer.html', courses=courses, sel_course=None, modules=[], submissions=[], praktikans=[], grade_legend=GRADE_LEGEND, calculate_module_avg=calculate_module_avg)
-    modules = conn.execute('SELECT * FROM modules WHERE course_id=?', (sel_course,)).fetchall()
-    subs = conn.execute('''SELECT s.*, m.name as module_name, u.name as submitter_name
-        FROM submissions s JOIN modules m ON s.module_id=m.id LEFT JOIN users u ON s.submitted_by=u.id
-        WHERE m.course_id=? ORDER BY s.timestamp DESC''', (sel_course,)).fetchall()
-    submissions = [dict(s) for s in subs]
-    praks = conn.execute('SELECT * FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id, name', (sel_course,)).fetchall()
-    ml = [dict(m) for m in modules]
-    praktikans = []
-    for p in praks:
-        pd = dict(p)
-        gr = conn.execute('SELECT * FROM grades WHERE praktikan_id=?', (p['id'],)).fetchall()
-        pd['grades'] = {g['module_id']: dict(g) for g in gr}
-        pd['total'] = calculate_total(pd['grades'], ml, pd.get('pembukuan_score', 0))
-        pd['letter'] = get_letter_grade(pd['total'])
-        praktikans.append(pd)
-    conn.close()
-    return render_template('viewer.html', courses=courses, sel_course=sel_course, modules=modules, submissions=submissions, praktikans=praktikans, grade_legend=GRADE_LEGEND, calculate_module_avg=calculate_module_avg)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5000)
