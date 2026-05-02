@@ -421,9 +421,9 @@ def toggle_module_status():
     if 'role' not in session or session['role'] != 'ASPRAK':
         return redirect(url_for('asprak_login'))
     conn = get_db()
-    user = conn.execute('SELECT is_co_asprak FROM users WHERE id=?', (session['user_id'],)).fetchone()
-    if not user or not user['is_co_asprak']:
-        flash('Hanya Co-Asprak yang dapat membuka/tutup pengumpulan', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
+    user = conn.execute('SELECT is_co_asprak, is_admin FROM users WHERE id=?', (session['user_id'],)).fetchone()
+    if not user or not (user['is_co_asprak'] or user['is_admin']):
+        flash('Hanya Co-Asprak atau Admin yang dapat membuka/tutup pengumpulan', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     mid = request.form.get('module_id'); cs = request.form.get('current_status', type=int)
     ns = 0 if cs == 1 else 1
     conn.execute('UPDATE modules SET is_open=? WHERE id=?', (ns, mid)); conn.commit(); conn.close()
@@ -435,9 +435,9 @@ def add_module():
     if 'role' not in session or session['role'] != 'ASPRAK':
         return redirect(url_for('asprak_login'))
     conn = get_db()
-    user = conn.execute('SELECT is_co_asprak FROM users WHERE id=?', (session['user_id'],)).fetchone()
-    if not user or not user['is_co_asprak']:
-        flash('Hanya Co-Asprak yang dapat menambah modul', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
+    user = conn.execute('SELECT is_co_asprak, is_admin FROM users WHERE id=?', (session['user_id'],)).fetchone()
+    if not user or not (user['is_co_asprak'] or user['is_admin']):
+        flash('Hanya Co-Asprak atau Admin yang dapat menambah modul', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     name = request.form.get('name'); desc = request.form.get('description')
     deadline = request.form.get('deadline') or None
     cid = request.form.get('course_id', type=int)
@@ -451,9 +451,9 @@ def edit_module():
     if 'role' not in session or session['role'] != 'ASPRAK':
         return redirect(url_for('asprak_login'))
     conn = get_db()
-    user = conn.execute('SELECT is_co_asprak FROM users WHERE id=?', (session['user_id'],)).fetchone()
-    if not user or not user['is_co_asprak']:
-        flash('Hanya Co-Asprak yang dapat mengedit modul', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
+    user = conn.execute('SELECT is_co_asprak, is_admin FROM users WHERE id=?', (session['user_id'],)).fetchone()
+    if not user or not (user['is_co_asprak'] or user['is_admin']):
+        flash('Hanya Co-Asprak atau Admin yang dapat mengedit modul', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     mid = request.form.get('module_id'); name = request.form.get('name'); desc = request.form.get('description')
     deadline = request.form.get('deadline') or None
     conn.execute('UPDATE modules SET name=?, description=?, deadline=? WHERE id=?', (name, desc, deadline, mid)); conn.commit(); conn.close()
@@ -465,9 +465,9 @@ def delete_module():
     if 'role' not in session or session['role'] != 'ASPRAK':
         return redirect(url_for('asprak_login'))
     conn = get_db()
-    user = conn.execute('SELECT is_co_asprak FROM users WHERE id=?', (session['user_id'],)).fetchone()
-    if not user or not user['is_co_asprak']:
-        flash('Hanya Co-Asprak yang dapat menghapus modul', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
+    user = conn.execute('SELECT is_co_asprak, is_admin FROM users WHERE id=?', (session['user_id'],)).fetchone()
+    if not user or not (user['is_co_asprak'] or user['is_admin']):
+        flash('Hanya Co-Asprak atau Admin yang dapat menghapus modul', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     mid = request.form.get('module_id')
     subs = conn.execute('SELECT * FROM submissions WHERE module_id=?', (mid,)).fetchall()
     for sub in subs:

@@ -25,6 +25,7 @@
 <div class="tabs-nav glass-panel" style="display:flex; justify-content:center; gap:0.5rem; margin-bottom:1.5rem; padding:0.75rem; width:100%; border-radius:15px;">
     <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='gdrive') }}" class="btn {% if active_tab == 'gdrive' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Google Drive">📁</a>
     <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='manage_asprak') }}" class="btn {% if active_tab == 'manage_asprak' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Tambah Data">👤</a>
+    <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='manage_module') }}" class="btn {% if active_tab == 'manage_module' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Kelola Modul">📚</a>
     <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='data_asprak') }}" class="btn {% if active_tab == 'data_asprak' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Data Asprak">📋</a>
 </div>
 {% endif %}
@@ -82,7 +83,7 @@
     </div>
 
     {% endif %}
-{% if active_tab == "manage_module" and is_co_asprak %}
+{% if active_tab == "manage_module" and (is_co_asprak or admin) %}
 <div class="card glass-panel" style="border-left: 3px solid var(--warning); margin-top: 1.5rem;">
         <h3 class="card-title">📚 Kelola Modul</h3>
         <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
