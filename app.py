@@ -9,6 +9,14 @@ from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 app = Flask(__name__)
 app.secret_key = 'super_secret_siprak_key'
 
+# Automatic database initialization and migration on startup
+try:
+    from database import init_db, migrate
+    init_db()
+    migrate()
+except Exception as e:
+    print(f"Failed to auto-migrate database: {e}")
+
 GDRIVE_UPLOAD_FOLDER = r'G:\My Drive\Siprak'
 LOCAL_UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 if os.path.isdir(r'G:\My Drive'):
@@ -443,7 +451,9 @@ def add_module():
     cid = request.form.get('course_id', type=int)
     if name and cid:
         conn.execute('INSERT INTO modules (name, description, is_open, deadline, course_id) VALUES (?,?,1,?,?)', (name, desc, deadline, cid))
-        conn.commit(); conn.close(); flash(f'Modul {name} berhasil ditambahkan', 'success')
+        conn.commit()
+        flash(f'Modul {name} berhasil ditambahkan', 'success')
+    conn.close()
     return redirect(url_for('asprak_dashboard', course_id=cid, tab=request.form.get('tab') or request.args.get('tab')))
 
 @app.route('/asprak/module/edit', methods=['POST'])
