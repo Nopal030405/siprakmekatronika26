@@ -257,7 +257,6 @@ def asprak_dashboard():
         aspraks = conn.execute('SELECT * FROM users WHERE role="ASPRAK" AND course_id=? ORDER BY name', (sel_course,)).fetchall()
     all_groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id', (sel_course,)).fetchall()
     all_groups = [g['group_id'] for g in all_groups]
-    all_groups = [g['group_id'] for g in all_groups]
     conn.close()
     return render_template('asprak.html', modules=modules, submissions=submissions, praktikans=praktikans,
                            courses=courses, sel_course=sel_course, admin=admin, aspraks=aspraks,
