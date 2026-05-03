@@ -18,6 +18,14 @@
         </select>
     </form>
     {% endif %}
+    
+    {% if not admin and course_drive_link %}
+    <div style="margin-top: 1rem; text-align: center;">
+        <a href="{{ course_drive_link }}" target="_blank" class="btn btn-secondary" style="border-radius:20px; font-size:0.9rem; padding: 0.5rem 1.5rem; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--primary); color: var(--primary); text-decoration: none; font-weight: 600; gap: 0.5rem;" title="Cek Pengumpulan GDrive">
+            <span style="font-size: 1.2rem;">📁</span> Buka Folder Drive
+        </a>
+    </div>
+    {% endif %}
 </div>
 
 
@@ -35,9 +43,7 @@
     {% if is_co_asprak %}
     <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='manage_module') }}" class="btn {% if active_tab == 'manage_module' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Kelola Modul">📚</a>
     {% endif %}
-    {% if course_drive_link %}
-    <a href="{{ course_drive_link }}" target="_blank" class="btn btn-secondary" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center; border: 1px solid var(--primary); color: var(--primary);" title="Cek Pengumpulan GDrive">📁</a>
-    {% endif %}
+
     {% if active_tab == 'grading' %}
     <button type="button" id="btn-toggle-total" class="btn btn-secondary" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" onclick="toggleCol('total')" title="Tampilkan/Sembunyikan Nilai Akhir">💯</button>
     {% endif %}

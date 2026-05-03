@@ -214,6 +214,11 @@ def asprak_dashboard():
                                sel_course=None, admin=admin, aspraks=[], calculate_module_avg=calculate_module_avg,
                                grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=None, active_tab=active_tab)
     modules = conn.execute('SELECT * FROM modules WHERE course_id=?', (sel_course,)).fetchall()
+    
+    # Get drive link for selected course early so it's available even if no praktikans exist
+    course_row = conn.execute('SELECT drive_link FROM courses WHERE id=?', (sel_course,)).fetchone()
+    course_drive_link = course_row['drive_link'] if course_row else None
+    
     allowed = get_allowed_groups(asprak_name, sel_course)
     if not allowed:
         conn.close()
@@ -224,7 +229,7 @@ def asprak_dashboard():
             conn2.close()
         return render_template('asprak.html', modules=modules, submissions=[], praktikans=[], courses=courses,
                                sel_course=sel_course, admin=admin, aspraks=aspraks, calculate_module_avg=calculate_module_avg,
-                               grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=None, active_tab=active_tab)
+                               grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=course_drive_link, active_tab=active_tab)
     ph = ','.join('?' for _ in allowed)
     subs_raw = conn.execute(f'''SELECT s.*, m.name as module_name, u.name as submitter_name
         FROM submissions s JOIN modules m ON s.module_id=m.id LEFT JOIN users u ON s.submitted_by=u.id
@@ -252,9 +257,7 @@ def asprak_dashboard():
         aspraks = conn.execute('SELECT * FROM users WHERE role="ASPRAK" AND course_id=? ORDER BY name', (sel_course,)).fetchall()
     all_groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id', (sel_course,)).fetchall()
     all_groups = [g['group_id'] for g in all_groups]
-    # Get drive link for selected course
-    course_row = conn.execute('SELECT drive_link FROM courses WHERE id=?', (sel_course,)).fetchone()
-    course_drive_link = course_row['drive_link'] if course_row else None
+    all_groups = [g['group_id'] for g in all_groups]
     conn.close()
     return render_template('asprak.html', modules=modules, submissions=submissions, praktikans=praktikans,
                            courses=courses, sel_course=sel_course, admin=admin, aspraks=aspraks,
