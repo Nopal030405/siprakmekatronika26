@@ -34,7 +34,9 @@ def init_db():
             is_admin INTEGER DEFAULT 0,
             is_co_asprak INTEGER DEFAULT 0,
             pembukuan_score INTEGER DEFAULT 0,
-            FOREIGN KEY(course_id) REFERENCES courses(id)
+            asprak_id INTEGER,
+            FOREIGN KEY(course_id) REFERENCES courses(id),
+            FOREIGN KEY(asprak_id) REFERENCES users(id)
         )
     ''')
     
@@ -128,6 +130,7 @@ def migrate():
         ("users", "is_admin", "INTEGER DEFAULT 0"),
         ("users", "is_co_asprak", "INTEGER DEFAULT 0"),
         ("users", "pembukuan_score", "INTEGER DEFAULT 0"),
+        ("users", "asprak_id", "INTEGER"),
         ("courses", "drive_link", "TEXT"),
     ]
     

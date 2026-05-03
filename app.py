@@ -66,10 +66,12 @@ GRADE_LEGEND = [
     ('E', '< 40', 'var(--danger)'),
 ]
 
-def get_allowed_groups(asprak_name, course_id):
+def get_allowed_groups(user_id, course_id, is_admin):
     conn = get_db()
-    # All aspraks can see all groups in the course now since they input them manually
-    groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id', (course_id,)).fetchall()
+    if is_admin:
+        groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id', (course_id,)).fetchall()
+    else:
+        groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? AND asprak_id=? ORDER BY group_id', (course_id, user_id)).fetchall()
     conn.close()
     return tuple(g['group_id'] for g in groups)
 
@@ -219,7 +221,7 @@ def asprak_dashboard():
     course_row = conn.execute('SELECT drive_link FROM courses WHERE id=?', (sel_course,)).fetchone()
     course_drive_link = course_row['drive_link'] if course_row else None
     
-    allowed = get_allowed_groups(asprak_name, sel_course)
+    allowed = get_allowed_groups(session['user_id'], sel_course, admin)
     if not allowed:
         conn.close()
         aspraks = []
@@ -241,8 +243,12 @@ def asprak_dashboard():
             submissions.append(dict(sub))
         else:
             conn.execute('DELETE FROM submissions WHERE id=?', (sub['id'],)); conn.commit()
-    praks_raw = conn.execute(f'SELECT * FROM users WHERE role="PRAKTIKAN" AND course_id=? AND group_id IN ({ph}) ORDER BY group_id, name',
-                             (sel_course, *allowed)).fetchall()
+    if admin:
+        praks_raw = conn.execute(f'SELECT * FROM users WHERE role="PRAKTIKAN" AND course_id=? AND group_id IN ({ph}) ORDER BY group_id, name',
+                                 (sel_course, *allowed)).fetchall()
+    else:
+        praks_raw = conn.execute(f'SELECT * FROM users WHERE role="PRAKTIKAN" AND course_id=? AND asprak_id=? AND group_id IN ({ph}) ORDER BY group_id, name',
+                                 (sel_course, session['user_id'], *allowed)).fetchall()
     ml = [dict(m) for m in modules]
     praktikans = []
     for p in praks_raw:
@@ -308,12 +314,16 @@ def export_excel():
     course_name = course['name'] if course else 'Unknown'
     modules = conn.execute('SELECT * FROM modules WHERE course_id=?', (sel_course,)).fetchall()
     ml = [dict(m) for m in modules]
-    allowed = get_allowed_groups(user['name'], sel_course)
+    allowed = get_allowed_groups(session['user_id'], sel_course, user['is_admin'] == 1)
     if not allowed:
         flash('Tidak ada data', 'error'); conn.close(); return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
     ph = ','.join('?' for _ in allowed)
-    praks = conn.execute(f'SELECT * FROM users WHERE role="PRAKTIKAN" AND course_id=? AND group_id IN ({ph}) ORDER BY group_id, name',
-                         (sel_course, *allowed)).fetchall()
+    if user['is_admin'] == 1:
+        praks = conn.execute(f'SELECT * FROM users WHERE role="PRAKTIKAN" AND course_id=? AND group_id IN ({ph}) ORDER BY group_id, name',
+                             (sel_course, *allowed)).fetchall()
+    else:
+        praks = conn.execute(f'SELECT * FROM users WHERE role="PRAKTIKAN" AND course_id=? AND asprak_id=? AND group_id IN ({ph}) ORDER BY group_id, name',
+                             (sel_course, session['user_id'], *allowed)).fetchall()
     subs = conn.execute(f'SELECT module_id, group_id FROM submissions WHERE group_id IN ({ph})', allowed).fetchall()
     ss = {(s['module_id'], s['group_id']) for s in subs}
     data = []
@@ -519,8 +529,8 @@ def add_praktikan():
     cid = request.form.get('course_id', type=int)
     if name and gid and cid:
         conn = get_db()
-        conn.execute('INSERT INTO users (name, role, group_id, password, course_id, is_admin, is_co_asprak, pembukuan_score) VALUES (?,?,?,?,?,?,?,?)',
-                     (name, 'PRAKTIKAN', gid, None, cid, 0, 0, 0))
+        conn.execute('INSERT INTO users (name, role, group_id, password, course_id, is_admin, is_co_asprak, pembukuan_score, asprak_id) VALUES (?,?,?,?,?,?,?,?,?)',
+                     (name, 'PRAKTIKAN', gid, None, cid, 0, 0, 0, session['user_id']))
         conn.commit(); conn.close()
         flash(f'Praktikan "{name}" berhasil ditambahkan ke Kel {gid}!', 'success')
     return redirect(url_for('asprak_dashboard', course_id=cid, tab=request.form.get('tab') or request.args.get('tab')))
