@@ -19,19 +19,17 @@
     </form>
     {% endif %}
     
-    {% if not admin and course_drive_link %}
     <div style="margin-top: 1rem; text-align: center;">
-        <a href="{{ course_drive_link }}" target="_blank" class="btn btn-secondary" style="border-radius:20px; font-size:0.9rem; padding: 0.5rem 1.5rem; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--primary); color: var(--primary); text-decoration: none; font-weight: 600; gap: 0.5rem;" title="Cek Pengumpulan GDrive">
-            <span style="font-size: 1.2rem;">📁</span> Buka Folder Drive
+        <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='gdrive') }}" class="btn btn-secondary" style="border-radius:20px; font-size:0.9rem; padding: 0.5rem 1.5rem; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--primary); color: var(--primary); text-decoration: none; font-weight: 600; gap: 0.5rem;" title="Cek Daftar Pengumpulan">
+            <span style="font-size: 1.2rem;">📥</span> Buka Pengumpulan
         </a>
     </div>
-    {% endif %}
 </div>
 
 
 {% if admin %}
 <div class="tabs-nav glass-panel" style="display:flex; justify-content:center; gap:0.5rem; margin-bottom:1.5rem; padding:0.75rem; width:100%; border-radius:15px;">
-    <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='gdrive') }}" class="btn {% if active_tab == 'gdrive' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Google Drive">📁</a>
+    <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='gdrive') }}" class="btn {% if active_tab == 'gdrive' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Daftar Pengumpulan">📥</a>
     <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='manage_asprak') }}" class="btn {% if active_tab == 'manage_asprak' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Tambah Data">👤</a>
     <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='manage_module') }}" class="btn {% if active_tab == 'manage_module' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Kelola Modul">📚</a>
     <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='data_asprak') }}" class="btn {% if active_tab == 'data_asprak' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Data Asprak">📋</a>
@@ -40,6 +38,7 @@
 {% if not admin %}
 <div class="tabs-nav glass-panel" style="display:flex; justify-content:center; gap:0.5rem; margin-bottom:1.5rem; padding:0.75rem; width:100%; border-radius:15px; flex-wrap:wrap;">
     <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='grading') }}" class="btn {% if active_tab == 'grading' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Penilaian Praktikan">📝</a>
+    <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='gdrive') }}" class="btn {% if active_tab == 'gdrive' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Daftar Pengumpulan">📥</a>
     {% if is_co_asprak %}
     <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='manage_module') }}" class="btn {% if active_tab == 'manage_module' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Kelola Modul">📚</a>
     {% endif %}
@@ -207,25 +206,55 @@
             </div>
         </div>
 {% endif %}
-{% if active_tab == "gdrive" and admin %}
+{% if active_tab == "gdrive" %}
     <div class="card glass-panel" style="border-left: 3px solid var(--secondary);">
-        <h3 class="card-title">🔗 Link Folder Google Drive</h3>
-        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">Link ini telah diatur secara permanen oleh sistem untuk semua praktikum.</p>
-        
-        <div class="form-group" style="margin-bottom:1.5rem;">
-            <label style="font-size:0.8rem; font-weight: 700; color: var(--primary);">URL Folder Drive Utama</label>
-            <div style="display: flex; gap: 0.5rem; align-items: center; background: var(--bg-card); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--surface-border);">
-                <code style="font-size: 0.85rem; color: var(--text-main); word-break: break-all; flex: 1;">{{ course_drive_link }}</code>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div>
+                <h3 class="card-title" style="margin-bottom: 0.25rem;">📥 Daftar Pengumpulan Modul</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Berikut adalah daftar file yang telah dikirim oleh praktikan melalui website.</p>
             </div>
+            {% if admin %}
+            <div style="text-align: right;">
+                <span style="font-size: 0.7rem; color: var(--danger); font-weight: 700; display: block;">🔒 LINK DRIVE PERMANEN</span>
+                <a href="{{ course_drive_link }}" target="_blank" style="font-size: 0.75rem; color: var(--primary); text-decoration: underline;">Buka Google Drive Utama</a>
+            </div>
+            {% endif %}
         </div>
-
-        <div style="display: flex; gap: 1rem;">
-            <a href="{{ course_drive_link }}" target="_blank" class="btn btn-primary" style="font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.5rem;">
-                📁 Buka Folder Drive
-            </a>
-            <span style="font-size: 0.75rem; color: var(--danger); font-weight: 600; display: flex; align-items: center;">
-                🔒 Pengubahan link dinonaktifkan
-            </span>
+        
+        <div class="table-responsive">
+            <table class="grade-table" style="font-size: 0.85rem;">
+                <thead>
+                    <tr>
+                        <th>Waktu</th>
+                        <th>Kelompok</th>
+                        <th>Modul</th>
+                        <th>Pengirim</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in submissions %}
+                    <tr>
+                        <td>{{ sub.timestamp }}</td>
+                        <td>Kelompok {{ sub.group_id }}</td>
+                        <td>{{ sub.module_name }}</td>
+                        <td>{{ sub.submitter_name or 'Anonim' }}</td>
+                        <td>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <a href="{{ url_for('download_file', name=sub.file_path) }}" class="btn btn-success" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" title="Download File">💾 Download</a>
+                                <form method="POST" action="{{ url_for('delete_submission', id=sub.id) }}" style="display: inline;" onsubmit="return confirm('Hapus pengumpulan ini?')">
+                                    <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">🗑</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">Belum ada file yang masuk untuk mata kuliah ini.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
     {% endif %}
