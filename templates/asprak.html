@@ -146,9 +146,33 @@
 
     
 {% if active_tab == 'data_asprak' and admin %}
-<div class="card glass-panel" style="border-left: 3px solid var(--primary); margin-top: 1.5rem;">
+    <div class="card glass-panel" style="border-left: 3px solid var(--primary); margin-top: 0;">
+            <h3 class="card-title">👤 Kelola Akun Asprak</h3>
+            
+            <!-- Form Tambah Asprak (Pindahan) -->
+            <div style="background: var(--primary-light); padding: 1.5rem; border-radius: var(--radius-md); margin-bottom: 2rem; border: 1px dashed var(--primary);">
+                <h4 style="margin-bottom:1rem; color:var(--primary); font-size:0.9rem; font-weight: 700;">➕ Tambah Asprak / Co-Asprak Baru</h4>
+                <form method="POST" action="{{ url_for('add_asprak', tab=active_tab) }}" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; align-items: flex-end;">
+                    <div class="form-group" style="margin-bottom:0;"><label>Nama</label><input type="text" name="asprak_name" class="form-control" placeholder="Nama asprak" required></div>
+                    <div class="form-group" style="margin-bottom:0;"><label>Password</label><input type="text" name="asprak_password" class="form-control" placeholder="Password" required></div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Mata Kuliah</label>
+                        <select name="asprak_course_id" class="form-control" required>
+                            {% for c in courses %}<option value="{{ c.id }}" {% if c.id == sel_course %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0; display:flex; align-items:center; gap:0.5rem; height: 42px;">
+                        <input type="checkbox" name="is_co_asprak" id="is_co_check" style="width:1.2rem; height:1.2rem;">
+                        <label for="is_co_check" style="margin:0; font-size:0.85rem; cursor:pointer;">Jadikan Co-Asprak ⭐</label>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <button type="submit" class="btn btn-primary" style="width:100%; height: 42px; font-weight: 700;">+ Daftarkan Asprak</button>
+                    </div>
+                </form>
+            </div>
+
             <h4 style="margin-bottom:1rem; color:var(--primary); font-size:0.95rem; display:flex; align-items:center; gap:0.5rem;">
-                <span>✏️</span> Kelola Akun Asprak
+                <span>✏️</span> Daftar Akun Terdaftar
             </h4>
             
             <div class="management-list" style="width: 100%;">
