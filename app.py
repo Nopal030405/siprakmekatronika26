@@ -154,7 +154,7 @@ def praktikan_submit():
         fn = secure_filename(f"Kelompok_{group_id}_Modul_{module_id}_{file.filename}")
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], fn))
         
-        conn.execute('INSERT INTO submissions (module_id, group_id, file_path, submitted_by) VALUES (?,?,?,?)', (module_id, group_id, fn, uid))
+        conn.execute('INSERT INTO submissions (module_id, group_id, file_path, submitted_by, submitter_name) VALUES (?,?,?,?,?)', (module_id, group_id, fn, uid, praktikan_name))
         conn.commit(); conn.close()
         flash('Modul berhasil dikumpulkan!', 'success')
     else:
@@ -247,7 +247,7 @@ def asprak_dashboard():
                                sel_course=sel_course, admin=admin, aspraks=aspraks, calculate_module_avg=calculate_module_avg,
                                grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=course_drive_link, active_tab=active_tab)
     ph = ','.join('?' for _ in allowed)
-    subs_raw = conn.execute(f'''SELECT s.*, m.name as module_name, u.name as submitter_name
+    subs_raw = conn.execute(f'''SELECT s.*, m.name as module_name, u.name as user_real_name
         FROM submissions s JOIN modules m ON s.module_id=m.id LEFT JOIN users u ON s.submitted_by=u.id
         WHERE s.group_id IN ({ph}) AND m.course_id=? ORDER BY s.timestamp DESC''', (*allowed, sel_course)).fetchall()
     submissions = []

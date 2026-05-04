@@ -61,6 +61,7 @@ def init_db():
             group_id INTEGER,
             file_path TEXT,
             submitted_by INTEGER,
+            submitter_name TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(module_id) REFERENCES modules(id),
             FOREIGN KEY(submitted_by) REFERENCES users(id),
@@ -132,6 +133,7 @@ def migrate():
         ("users", "pembukuan_score", "INTEGER DEFAULT 0"),
         ("users", "asprak_id", "INTEGER"),
         ("courses", "drive_link", "TEXT"),
+        ("submissions", "submitter_name", "TEXT"),
     ]
     
     for table, column, col_type in migrations:
