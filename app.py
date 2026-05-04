@@ -9,6 +9,9 @@ from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 app = Flask(__name__)
 app.secret_key = 'super_secret_siprak_key'
 
+# Hardcoded Default Google Drive Link for all courses
+DEFAULT_DRIVE_LINK = "https://drive.google.com/drive/folders/1fGzaRgO7hmu5_I-_l2HZxnRlnwxKsMD8"
+
 # Automatic database initialization and migration on startup
 try:
     from database import init_db, migrate
@@ -109,10 +112,8 @@ def praktikan_dashboard():
     if sel_course:
         modules = conn.execute('SELECT * FROM modules WHERE course_id=?', (sel_course,)).fetchall()
         groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id', (sel_course,)).fetchall()
-        course_row = conn.execute('SELECT drive_link FROM courses WHERE id=?', (sel_course,)).fetchone()
-        drive_link = course_row['drive_link'] if course_row else None
     conn.close()
-    return render_template('praktikan.html', courses=courses, modules=modules, groups=groups, sel_course=sel_course, drive_link=drive_link)
+    return render_template('praktikan.html', courses=courses, modules=modules, groups=groups, sel_course=sel_course, drive_link=DEFAULT_DRIVE_LINK)
 
 @app.route('/praktikan/submit', methods=['POST'])
 def praktikan_submit():
@@ -231,9 +232,8 @@ def asprak_dashboard():
                                grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=None, active_tab=active_tab)
     modules = conn.execute('SELECT * FROM modules WHERE course_id=?', (sel_course,)).fetchall()
     
-    # Get drive link for selected course early so it's available even if no praktikans exist
-    course_row = conn.execute('SELECT drive_link FROM courses WHERE id=?', (sel_course,)).fetchone()
-    course_drive_link = course_row['drive_link'] if course_row else None
+    # Use hardcoded drive link
+    course_drive_link = DEFAULT_DRIVE_LINK
     
     allowed = get_allowed_groups(session['user_id'], sel_course, admin)
     if not allowed:
@@ -612,22 +612,8 @@ def assign_asprak_course():
 # ======== CO-ASPRAK: SET DRIVE LINK ========
 @app.route('/asprak/set_drive_link', methods=['POST'])
 def set_drive_link():
-    if 'role' not in session or session['role'] != 'ASPRAK':
-        return redirect(url_for('asprak_login'))
-    conn = get_db()
-    user = conn.execute('SELECT * FROM users WHERE id=?', (session['user_id'],)).fetchone()
-    if not (user['is_co_asprak'] or user['is_admin']):
-        flash('Hanya Co-Asprak atau Admin yang dapat mengatur Drive folder', 'error')
-        conn.close()
-        return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
-    cid = request.form.get('course_id', type=int)
-    link = request.form.get('drive_link', '').strip()
-    if cid:
-        conn.execute('UPDATE courses SET drive_link=? WHERE id=?', (link or None, cid))
-        conn.commit()
-        flash('Link Google Drive berhasil disimpan!' if link else 'Link Google Drive dihapus.', 'success')
-    conn.close()
-    return redirect(url_for('asprak_dashboard', course_id=cid, tab=request.form.get('tab') or request.args.get('tab')))
+    flash('Fitur pengubahan link Drive telah dinonaktifkan oleh sistem.', 'error')
+    return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
 
 
 if __name__ == '__main__':

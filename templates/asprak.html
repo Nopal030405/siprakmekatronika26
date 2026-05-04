@@ -210,20 +210,23 @@
 {% if active_tab == "gdrive" and admin %}
     <div class="card glass-panel" style="border-left: 3px solid var(--secondary);">
         <h3 class="card-title">🔗 Link Folder Google Drive</h3>
-
-        <form method="POST" action="{{ url_for('set_drive_link', tab=active_tab) }}" style="display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
-            <input type="hidden" name="course_id" value="{{ sel_course }}">
-            <div class="form-group" style="margin-bottom:0; flex:1; min-width:300px;">
-                <label style="font-size:0.8rem;">URL Folder Drive</label>
-                <input type="url" name="drive_link" class="form-control" placeholder="https://drive.google.com/..." value="{{ course_drive_link or '' }}">
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">Link ini telah diatur secara permanen oleh sistem untuk semua praktikum.</p>
+        
+        <div class="form-group" style="margin-bottom:1.5rem;">
+            <label style="font-size:0.8rem; font-weight: 700; color: var(--primary);">URL Folder Drive Utama</label>
+            <div style="display: flex; gap: 0.5rem; align-items: center; background: var(--bg-card); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--surface-border);">
+                <code style="font-size: 0.85rem; color: var(--text-main); word-break: break-all; flex: 1;">{{ course_drive_link }}</code>
             </div>
-            <button type="submit" class="btn btn-secondary" style="font-size:0.85rem;">💾 Simpan Link</button>
-        </form>
-        {% if course_drive_link %}
-        <div style="margin-top: 0.75rem;">
-            <a href="{{ course_drive_link }}" target="_blank" style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">📁 Buka Folder Drive</a>
         </div>
-        {% endif %}
+
+        <div style="display: flex; gap: 1rem;">
+            <a href="{{ course_drive_link }}" target="_blank" class="btn btn-primary" style="font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                📁 Buka Folder Drive
+            </a>
+            <span style="font-size: 0.75rem; color: var(--danger); font-weight: 600; display: flex; align-items: center;">
+                🔒 Pengubahan link dinonaktifkan
+            </span>
+        </div>
     </div>
     {% endif %}
 
