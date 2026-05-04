@@ -17,12 +17,17 @@ try:
 except Exception as e:
     print(f"Failed to auto-migrate database: {e}")
 
+# Upload folder configuration
+# Check for Google Drive Desktop folder (common on local Windows dev)
 GDRIVE_UPLOAD_FOLDER = r'G:\My Drive\Siprak'
 LOCAL_UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+
 if os.path.isdir(r'G:\My Drive'):
     UPLOAD_FOLDER = GDRIVE_UPLOAD_FOLDER
 else:
+    # On PythonAnywhere or local without G: drive, use local uploads folder
     UPLOAD_FOLDER = LOCAL_UPLOAD_FOLDER
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'zip'}
@@ -134,11 +139,20 @@ def praktikan_submit():
                 pass # If format fails, fallback to string comparison or just pass
         existing = conn.execute('SELECT * FROM submissions WHERE group_id=? AND module_id=?', (group_id, module_id)).fetchone()
         if existing:
-            flash('Kelompok sudah mengumpulkan modul ini!', 'error'); conn.close(); return redirect(url_for('praktikan_dashboard'))
+            # Check if file exists on disk. If not, allow resubmission by deleting the 'ghost' record.
+            old_fp = os.path.join(app.config['UPLOAD_FOLDER'], existing['file_path'])
+            if os.path.exists(old_fp):
+                flash('Kelompok sudah mengumpulkan modul ini!', 'error'); conn.close(); return redirect(url_for('praktikan_dashboard'))
+            else:
+                conn.execute('DELETE FROM submissions WHERE id=?', (existing['id'],))
+                conn.commit()
+        
         user = conn.execute('SELECT id FROM users WHERE role="PRAKTIKAN" AND group_id=? AND name LIKE ?', (group_id, f'%{praktikan_name}%')).fetchone()
         uid = user['id'] if user else None
+        
         fn = secure_filename(f"Kelompok_{group_id}_Modul_{module_id}_{file.filename}")
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], fn))
+        
         conn.execute('INSERT INTO submissions (module_id, group_id, file_path, submitted_by) VALUES (?,?,?,?)', (module_id, group_id, fn, uid))
         conn.commit(); conn.close()
         flash('Modul berhasil dikumpulkan!', 'success')
