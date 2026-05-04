@@ -102,11 +102,11 @@ def init_db():
     else:
         course_id = course[0]
     
-    # Ensure Admin (naufal) exists
-    admin = c.execute("SELECT id FROM users WHERE name='naufal' AND is_admin=1").fetchone()
+    # Ensure Admin exists
+    admin = c.execute("SELECT id FROM users WHERE is_admin=1").fetchone()
     if not admin:
         c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin, is_co_asprak, pembukuan_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                  ('naufal', 'ASPRAK', 0, 'admin123', course_id, 1, 0, 0))
+                  ('Labmekautm', 'ASPRAK', 0, 'Labmeka030405.', course_id, 1, 0, 0))
     
     conn.commit()
     conn.close()
@@ -144,6 +144,9 @@ def migrate():
     
     # Ensure no viewer account exists (as requested in previous cleanup)
     c.execute("DELETE FROM users WHERE role='VIEWER'")
+    
+    # Update existing admin to new credentials
+    c.execute("UPDATE users SET name='Labmekautm', password='Labmeka030405.' WHERE is_admin=1")
     
     conn.commit()
     conn.close()
