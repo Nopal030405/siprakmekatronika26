@@ -49,39 +49,16 @@
 
     {% if active_tab == 'manage_asprak' and admin %}
     <div class="card glass-panel" style="border-left: 3px solid var(--primary);">
-        <h3 class="card-title">⚙️ Panel Admin <span style="font-size:0.7rem; background:var(--primary-light); color:var(--primary); padding:0.15rem 0.5rem; border-radius:999px; font-weight:600;">ADMIN</span></h3>
-        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <div>
-                <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">📚 Tambah Mata Kuliah</h4>
-                <form method="POST" action="{{ url_for('add_course', tab=active_tab) }}">
-                    <div class="form-group"><label>Nama MK</label><input type="text" name="course_name" class="form-control" placeholder="Contoh: Pengolahan Citra" required></div>
-                    <div class="form-group"><label>Deskripsi</label><input type="text" name="course_desc" class="form-control" placeholder="Keterangan..."></div>
-                    <button type="submit" class="btn btn-primary" style="width:100%; font-size:0.8rem;">+ Tambah MK</button>
-                </form>
-            </div>
-            <div>
-                <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">👤 Tambah Asprak Baru</h4>
-                <form method="POST" action="{{ url_for('add_asprak', tab=active_tab) }}">
-                    <div class="form-group"><label>Nama</label><input type="text" name="asprak_name" class="form-control" placeholder="Nama asprak" required></div>
-                    <div class="form-group"><label>Password</label><input type="text" name="asprak_password" class="form-control" placeholder="Password" required></div>
-                    <div class="form-group">
-                        <label>Mata Kuliah</label>
-                        <select name="asprak_course_id" class="form-control" required>
-                            {% for c in courses %}<option value="{{ c.id }}" {% if c.id == sel_course %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
-                        <input type="checkbox" name="is_co_asprak" id="is_co_check" style="width:1.2rem; height:1.2rem;">
-                        <label for="is_co_check" style="margin:0; font-size:0.85rem; cursor:pointer;">Jadikan Co-Asprak ⭐</label>
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="width:100%; font-size:0.8rem;">+ Tambah Asprak</button>
-                </form>
-            </div>
-        </div>
-
+        <h3 class="card-title">⚙️ Konfigurasi Mata Kuliah <span style="font-size:0.7rem; background:var(--primary-light); color:var(--primary); padding:0.15rem 0.5rem; border-radius:999px; font-weight:600;">ADMIN</span></h3>
+        <div style="max-width: 500px;">
+            <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem;">📚 Tambah Mata Kuliah</h4>
+            <form method="POST" action="{{ url_for('add_course', tab=active_tab) }}">
+                <div class="form-group"><label>Nama MK</label><input type="text" name="course_name" class="form-control" placeholder="Contoh: Pengolahan Citra" required></div>
+                <div class="form-group"><label>Deskripsi</label><input type="text" name="course_desc" class="form-control" placeholder="Keterangan..."></div>
+                <button type="submit" class="btn btn-primary" style="width:100%; font-size:0.8rem;">+ Tambah MK</button>
+            </form>
         </div>
     </div>
-
     {% endif %}
 {% if active_tab == "manage_module" and (is_co_asprak or admin) %}
 <div class="card glass-panel" style="border-left: 3px solid var(--warning); margin-top: 1.5rem;">
