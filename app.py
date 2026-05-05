@@ -5,6 +5,8 @@ from database import get_db
 from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_siprak_key'
@@ -76,10 +78,8 @@ GRADE_LEGEND = [
 
 def get_allowed_groups(user_id, course_id, is_admin):
     conn = get_db()
-    if is_admin:
-        groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id', (course_id,)).fetchall()
-    else:
-        groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? AND asprak_id=? ORDER BY group_id', (course_id, user_id)).fetchall()
+    # Updated: Now non-admins can also see all groups in the same course for plagiarism check & monitoring
+    groups = conn.execute('SELECT DISTINCT group_id FROM users WHERE role="PRAKTIKAN" AND course_id=? ORDER BY group_id', (course_id,)).fetchall()
     conn.close()
     return tuple(g['group_id'] for g in groups)
 
@@ -88,6 +88,84 @@ def is_admin_user(user_id):
     u = conn.execute('SELECT is_admin FROM users WHERE id=?', (user_id,)).fetchone()
     conn.close()
     return u and u['is_admin'] == 1
+
+# ======== PLAGIARISM HELPERS ========
+def extract_text_from_file(fp):
+    ext = fp.split('.')[-1].lower()
+    text = ""
+    try:
+        if ext == 'pdf':
+            import PyPDF2
+            with open(fp, 'rb') as f:
+                pdf = PyPDF2.PdfReader(f)
+                for page in pdf.pages:
+                    text += page.extract_text() or ""
+        elif ext in ['doc', 'docx']:
+            import docx
+            doc = docx.Document(fp)
+            for para in doc.paragraphs:
+                text += para.text + "\n"
+        else: # Try as plain text
+            with open(fp, 'r', encoding='utf-8', errors='ignore') as f:
+                text = f.read()
+    except Exception as e:
+        print(f"Error extracting text from {fp}: {e}")
+    return text.strip()
+
+@app.route('/asprak/plagiarism/check', methods=['POST'])
+def plagiarism_check():
+    if 'role' not in session or session['role'] != 'ASPRAK':
+        return {"error": "Unauthorized"}, 403
+    
+    module_id = request.form.get('module_id')
+    if not module_id:
+        return {"error": "Module ID missing"}, 400
+    
+    conn = get_db()
+    subs = conn.execute('''
+        SELECT s.group_id, s.file_path, m.name as module_name 
+        FROM submissions s 
+        JOIN modules m ON s.module_id = m.id 
+        WHERE s.module_id = ?
+    ''', (module_id,)).fetchall()
+    conn.close()
+
+    if len(subs) < 2:
+        return {"error": "Minimal 2 pengumpulan diperlukan untuk pengecekan."}, 400
+
+    docs = []
+    labels = []
+    for s in subs:
+        fp = os.path.join(app.config['UPLOAD_FOLDER'], s['file_path'])
+        if os.path.exists(fp):
+            txt = extract_text_from_file(fp)
+            if len(txt) > 50: # Only count if there's enough text
+                docs.append(txt)
+                labels.append(f"Kelompok {s['group_id']}")
+    
+    if len(docs) < 2:
+        return {"error": "Teks tidak cukup untuk dibandingkan (file mungkin kosong atau tidak terbaca)."}, 400
+
+    # AI Algorithm: TF-IDF + Cosine Similarity
+    vectorizer = TfidfVectorizer(stop_words='english') # Could use Indonesian stopwords if needed
+    tfidf_matrix = vectorizer.fit_transform(docs)
+    sim_matrix = cosine_similarity(tfidf_matrix)
+
+    results = []
+    n = len(docs)
+    for i in range(n):
+        for j in range(i + 1, n):
+            score = float(sim_matrix[i][j]) * 100
+            if score > 30: # Threshold to show
+                results.append({
+                    "pair": f"{labels[i]} & {labels[j]}",
+                    "score": round(score, 2)
+                })
+    
+    # Sort by highest score
+    results.sort(key=lambda x: x['score'], reverse=True)
+    
+    return {"module_name": subs[0]['module_name'], "results": results}
 
 @app.context_processor
 def inject_user():
@@ -249,7 +327,7 @@ def asprak_dashboard():
     ph = ','.join('?' for _ in allowed)
     subs_raw = conn.execute(f'''SELECT s.*, m.name as module_name, u.name as user_real_name
         FROM submissions s JOIN modules m ON s.module_id=m.id LEFT JOIN users u ON s.submitted_by=u.id
-        WHERE s.group_id IN ({ph}) AND m.course_id=? ORDER BY s.timestamp DESC''', (*allowed, sel_course)).fetchall()
+        WHERE m.course_id=? ORDER BY s.timestamp DESC''', (sel_course,)).fetchall()
     submissions = []
     for sub in subs_raw:
         fp = os.path.join(app.config['UPLOAD_FOLDER'], sub['file_path'])
