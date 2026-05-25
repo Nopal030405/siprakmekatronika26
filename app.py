@@ -14,6 +14,23 @@ app.secret_key = 'super_secret_siprak_key'
 # Hardcoded Default Google Drive Link for all courses
 DEFAULT_DRIVE_LINK = "https://drive.google.com/drive/folders/1fGzaRgO7hmu5_I-_l2HZxnRlnwxKsMD8"
 
+# 12 Default Mechatronics Projects for Lucky Spin
+PROJECTS = [
+    "Sistem Kontrol Ketinggian Platform Lift dengan Penolakan Gangguan Beban",
+    "Sistem Kontrol Posisi Bola pada Bidang Miring (Ball and Beam)",
+    "Sistem Kontrol Intensitas Cahaya Ruangan",
+    "Sistem Kontrol Gaya Angkat Propeller (Thrust Levitation)",
+    "Sistem Kontrol Sudut Pendulum Terbalik (Inverted Pendulum)",
+    "Sistem Kontrol Keseimbangan Platform Satu Sumbu (Tilt Balance)",
+    "Sistem Kontrol Posisi Lengan Mekanik dengan Penolakan Gangguan Beban",
+    "Sistem Kontrol Ketinggian Bola Mengambang (Floating Ball)",
+    "Sistem Kontrol Tracking Cahaya Matahari (Solar Tracker)",
+    "Sistem Kontrol Peredam Guncangan Aktif (Active Suspension)",
+    "Sistem Kontrol Levitasi Magnetik (Magnetic Levitation)",
+    "Sistem Kontrol Penahan Posisi Roda Reaksi (Reaction Wheel Stabilizer)"
+]
+
+
 # Automatic database initialization and migration on startup
 try:
     from database import init_db, migrate
@@ -276,6 +293,15 @@ def asprak_dashboard():
         return redirect(url_for('asprak_login'))
     asprak_name = user['name']
     admin = user['is_admin'] == 1
+    project_spins = []
+    spin_options = []
+    total_groups = 12
+    if admin:
+        project_spins = conn.execute('SELECT * FROM project_spins ORDER BY group_id').fetchall()
+        spin_options = conn.execute('SELECT * FROM spin_options ORDER BY id').fetchall()
+        total_groups_row = conn.execute("SELECT value FROM settings WHERE key='total_groups'").fetchone()
+        if total_groups_row:
+            total_groups = int(total_groups_row['value'])
     if admin:
         courses = conn.execute('SELECT * FROM courses').fetchall()
     else:
@@ -307,7 +333,8 @@ def asprak_dashboard():
         conn.close()
         return render_template('asprak.html', modules=[], submissions=[], praktikans=[], courses=courses,
                                sel_course=None, admin=admin, aspraks=[], calculate_module_avg=calculate_module_avg,
-                               grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=None, active_tab=active_tab)
+                               grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=None, 
+                               active_tab=active_tab, project_spins=project_spins, spin_options=spin_options, total_groups=total_groups)
     modules = conn.execute('SELECT * FROM modules WHERE course_id=?', (sel_course,)).fetchall()
     
     # Use hardcoded drive link
@@ -323,7 +350,8 @@ def asprak_dashboard():
             conn2.close()
         return render_template('asprak.html', modules=modules, submissions=[], praktikans=[], courses=courses,
                                sel_course=sel_course, admin=admin, aspraks=aspraks, calculate_module_avg=calculate_module_avg,
-                               grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=course_drive_link, active_tab=active_tab)
+                               grade_legend=GRADE_LEGEND, all_groups=[], is_co_asprak=co_asprak, course_drive_link=course_drive_link, 
+                               active_tab=active_tab, project_spins=project_spins, spin_options=spin_options, total_groups=total_groups)
     ph = ','.join('?' for _ in allowed)
     subs_raw = conn.execute(f'''SELECT s.*, m.name as module_name, u.name as user_real_name
         FROM submissions s JOIN modules m ON s.module_id=m.id LEFT JOIN users u ON s.submitted_by=u.id
@@ -360,7 +388,7 @@ def asprak_dashboard():
                            courses=courses, sel_course=sel_course, admin=admin, aspraks=aspraks,
                            calculate_module_avg=calculate_module_avg, grade_legend=GRADE_LEGEND,
                            all_groups=all_groups, is_co_asprak=co_asprak, course_drive_link=course_drive_link,
-                           active_tab=active_tab)
+                           active_tab=active_tab, project_spins=project_spins, spin_options=spin_options, total_groups=total_groups)
 
 # ======== GRADE BATCH ========
 @app.route('/asprak/grade_batch', methods=['POST'])
@@ -692,6 +720,253 @@ def assign_asprak_course():
 def set_drive_link():
     flash('Fitur pengubahan link Drive telah dinonaktifkan oleh sistem.', 'error')
     return redirect(url_for('asprak_dashboard', tab=request.form.get('tab') or request.args.get('tab')))
+
+
+# ======== LUCKY SPIN PROJECT ROUTES ========
+@app.route('/spin')
+def spin_page():
+    conn = get_db()
+    courses = conn.execute('SELECT * FROM courses').fetchall()
+    
+    if not courses:
+        conn.close()
+        return render_template('spin.html', courses=[], sel_course=None, group_results={}, remaining_projects=[], taken_groups=set(), total_groups=0)
+        
+    sel_course = request.args.get('course_id', type=int)
+    if not sel_course or sel_course not in [c['id'] for c in courses]:
+        sel_course = courses[0]['id']
+        
+    spins = conn.execute('SELECT * FROM project_spins WHERE course_id=? ORDER BY group_id', (sel_course,)).fetchall()
+    
+    # Get total_groups from settings
+    total_groups_row = conn.execute("SELECT value FROM settings WHERE key=?", (f"total_groups_{sel_course}",)).fetchone()
+    total_groups = int(total_groups_row['value']) if total_groups_row else 12
+    
+    # Get projects from spin_options
+    options_rows = conn.execute("SELECT name FROM spin_options WHERE course_id=? ORDER BY id", (sel_course,)).fetchall()
+    db_projects = [r['name'] for r in options_rows]
+    conn.close()
+    
+    taken_projects = {s['project_name'] for s in spins}
+    remaining_projects = [p for p in db_projects if p not in taken_projects]
+    taken_groups = {s['group_id'] for s in spins}
+    
+    group_results = {}
+    for s in spins:
+        group_results[s['group_id']] = {
+            'name': s['representative_name'],
+            'project': s['project_name'],
+            'timestamp': s['timestamp']
+        }
+        
+    return render_template('spin.html', 
+                           courses=courses,
+                           sel_course=sel_course,
+                           group_results=group_results, 
+                           remaining_projects=remaining_projects, 
+                           taken_groups=taken_groups,
+                           total_groups=total_groups)
+
+@app.route('/spin/start', methods=['POST'])
+def start_spin():
+    import random
+    data = request.get_json() or {}
+    name = data.get('name', '').strip()
+    group_id_raw = data.get('group_id')
+    course_id_raw = data.get('course_id')
+    
+    if not name or group_id_raw is None or course_id_raw is None:
+        return {"status": "error", "message": "Nama perwakilan, nomor kelompok, dan mata kuliah harus diisi."}, 400
+        
+    try:
+        group_id = int(group_id_raw)
+        course_id = int(course_id_raw)
+    except ValueError:
+        return {"status": "error", "message": "Nomor kelompok atau mata kuliah tidak valid."}, 400
+        
+    conn = get_db()
+    # Get total_groups from settings
+    total_groups_row = conn.execute("SELECT value FROM settings WHERE key=?", (f"total_groups_{course_id}",)).fetchone()
+    total_groups = int(total_groups_row['value']) if total_groups_row else 12
+    
+    if group_id < 1 or group_id > total_groups:
+        conn.close()
+        return {"status": "error", "message": f"Nomor kelompok harus di antara 1 dan {total_groups}."}, 400
+        
+    # Check if group already spun
+    ex = conn.execute('SELECT id FROM project_spins WHERE course_id=? AND group_id=?', (course_id, group_id)).fetchone()
+    if ex:
+        conn.close()
+        return {"status": "error", "message": f"Kelompok {group_id} sudah melakukan spin sebelumnya."}, 400
+        
+    # Check remaining projects
+    spins = conn.execute('SELECT project_name FROM project_spins WHERE course_id=?', (course_id,)).fetchall()
+    taken_projects = {s['project_name'] for s in spins}
+    
+    # Get projects from spin_options
+    options_rows = conn.execute("SELECT name FROM spin_options WHERE course_id=? ORDER BY id", (course_id,)).fetchall()
+    db_projects = [r['name'] for r in options_rows]
+    remaining_projects = [p for p in db_projects if p not in taken_projects]
+    
+    if not remaining_projects:
+        conn.close()
+        return {"status": "error", "message": "Semua project sudah habis terundi!"}, 400
+        
+    # Draw project
+    chosen_project = random.choice(remaining_projects)
+    
+    try:
+        conn.execute('INSERT INTO project_spins (course_id, group_id, representative_name, project_name) VALUES (?, ?, ?, ?)',
+                     (course_id, group_id, name, chosen_project))
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        return {"status": "error", "message": f"Gagal menyimpan hasil undian: {str(e)}"}, 500
+        
+    conn.close()
+    
+    idx = remaining_projects.index(chosen_project)
+    
+    return {
+        "status": "success",
+        "project_name": chosen_project,
+        "index": idx,
+        "remaining_projects": remaining_projects
+    }
+        
+    conn.close()
+    
+    idx = remaining_projects.index(chosen_project)
+    
+    return {
+        "status": "success",
+        "project_name": chosen_project,
+        "index": idx,
+        "remaining_projects": remaining_projects
+    }
+
+@app.route('/admin/spin/delete/<int:id>', methods=['POST'])
+def delete_spin(id):
+    if not is_admin_user(session.get('user_id')):
+        flash('Akses ditolak', 'error')
+        return redirect(url_for('asprak_dashboard', tab='spin'))
+    conn = get_db()
+    # Get course_id to preserve redirect
+    spin = conn.execute('SELECT course_id FROM project_spins WHERE id=?', (id,)).fetchone()
+    cid = spin['course_id'] if spin else None
+    conn.execute('DELETE FROM project_spins WHERE id=?', (id,))
+    conn.commit()
+    conn.close()
+    flash('Hasil spin kelompok berhasil dihapus!', 'success')
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab='spin'))
+
+@app.route('/admin/spin/reset', methods=['POST'])
+def reset_spins():
+    if not is_admin_user(session.get('user_id')):
+        flash('Akses ditolak', 'error')
+        return redirect(url_for('asprak_dashboard', tab='spin'))
+    cid = request.form.get('course_id', type=int)
+    conn = get_db()
+    if cid:
+        conn.execute('DELETE FROM project_spins WHERE course_id=?', (cid,))
+        conn.commit()
+        flash('Semua hasil spin kelompok mata kuliah ini berhasil direset!', 'success')
+    else:
+        flash('Mata kuliah tidak valid.', 'error')
+    conn.close()
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab='spin'))
+
+@app.route('/admin/spin/total_groups', methods=['POST'])
+def update_total_groups():
+    if not is_admin_user(session.get('user_id')):
+        flash('Akses ditolak', 'error')
+        return redirect(url_for('asprak_dashboard', tab='spin'))
+    cid = request.form.get('course_id', type=int)
+    total_groups = request.form.get('total_groups')
+    if total_groups and cid:
+        try:
+            val = int(total_groups)
+            if val < 1:
+                flash('Jumlah kelompok harus minimal 1.', 'error')
+            else:
+                conn = get_db()
+                conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (f"total_groups_{cid}", str(val)))
+                conn.commit()
+                conn.close()
+                flash('Jumlah kelompok berhasil diperbarui!', 'success')
+        except ValueError:
+            flash('Jumlah kelompok tidak valid.', 'error')
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab='spin'))
+
+@app.route('/admin/spin/option/add', methods=['POST'])
+def add_spin_option():
+    if not is_admin_user(session.get('user_id')):
+        flash('Akses ditolak', 'error')
+        return redirect(url_for('asprak_dashboard', tab='spin'))
+    cid = request.form.get('course_id', type=int)
+    name = request.form.get('name', '').strip()
+    if name and cid:
+        conn = get_db()
+        try:
+            conn.execute('INSERT INTO spin_options (course_id, name) VALUES (?, ?)', (cid, name))
+            conn.commit()
+            flash(f'Pilihan "{name}" berhasil ditambahkan!', 'success')
+        except sqlite3.IntegrityError:
+            flash(f'Pilihan "{name}" sudah ada di mata kuliah ini.', 'error')
+        finally:
+            conn.close()
+    else:
+        flash('Nama pilihan dan mata kuliah tidak boleh kosong.', 'error')
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab='spin'))
+
+@app.route('/admin/spin/option/edit/<int:id>', methods=['POST'])
+def edit_spin_option(id):
+    if not is_admin_user(session.get('user_id')):
+        flash('Akses ditolak', 'error')
+        return redirect(url_for('asprak_dashboard', tab='spin'))
+    cid = request.form.get('course_id', type=int)
+    name = request.form.get('name', '').strip()
+    if name and cid:
+        conn = get_db()
+        try:
+            old_opt = conn.execute('SELECT name FROM spin_options WHERE id=?', (id,)).fetchone()
+            if old_opt:
+                old_name = old_opt['name']
+                conn.execute('UPDATE spin_options SET name=? WHERE id=?', (name, id))
+                conn.execute('UPDATE project_spins SET project_name=? WHERE course_id=? AND project_name=?', (name, cid, old_name))
+                conn.commit()
+                flash('Pilihan berhasil diperbarui dan disinkronkan!', 'success')
+            else:
+                flash('Pilihan tidak ditemukan.', 'error')
+        except sqlite3.IntegrityError:
+            flash(f'Pilihan "{name}" sudah ada di mata kuliah ini.', 'error')
+        finally:
+            conn.close()
+    else:
+        flash('Nama pilihan tidak boleh kosong.', 'error')
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab='spin'))
+
+@app.route('/admin/spin/option/delete/<int:id>', methods=['POST'])
+def delete_spin_option(id):
+    if not is_admin_user(session.get('user_id')):
+        flash('Akses ditolak', 'error')
+        return redirect(url_for('asprak_dashboard', tab='spin'))
+    cid = request.form.get('course_id', type=int)
+    conn = get_db()
+    opt = conn.execute('SELECT name FROM spin_options WHERE id=?', (id,)).fetchone()
+    if opt:
+        spun = conn.execute('SELECT COUNT(*) FROM project_spins WHERE course_id=? AND project_name=?', (cid, opt['name'])).fetchone()
+        if spun and spun[0] > 0:
+            flash(f'Pilihan "{opt["name"]}" tidak dapat dihapus karena sudah didapatkan oleh kelompok. Silakan hapus hasil undian kelompok terlebih dahulu.', 'error')
+        else:
+            conn.execute('DELETE FROM spin_options WHERE id=?', (id,))
+            conn.commit()
+            flash('Pilihan berhasil dihapus!', 'success')
+    else:
+        flash('Pilihan tidak ditemukan.', 'error')
+    conn.close()
+    return redirect(url_for('asprak_dashboard', course_id=cid, tab='spin'))
+
 
 
 if __name__ == '__main__':

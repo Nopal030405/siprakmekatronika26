@@ -8,19 +8,40 @@
         Platform terpadu untuk pengumpulan modul dan penilaian praktikum yang lebih efisien.
     </p>
 
-    <div class="grid grid-cols-2" style="max-width: 700px; margin: 0 auto;">
-        <div class="card glass-panel" style="text-align: center;">
-            <div style="font-size: 2rem; margin-bottom: 1rem;">📄</div>
-            <h2 class="card-title" style="text-align: center;">Portal Praktikan</h2>
-            <p style="color: var(--text-muted); margin-bottom: 2rem;">Kumpulkan modul praktikum sebagai perwakilan kelompok.</p>
-            <a href="{{ url_for('praktikan_dashboard') }}" class="btn btn-primary" style="width: 100%;">Masuk Portal</a>
+    <div style="max-width: 1050px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem;">
+        <!-- Row 1: Portal Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; width: 100%;">
+            <div class="card glass-panel" style="text-align: center; display: flex; flex-direction: column; justify-content: space-between; min-height: 250px;">
+                <div>
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">📄</div>
+                    <h2 class="card-title" style="text-align: center;">Portal Praktikan</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 2rem;">Kumpulkan modul praktikum sebagai perwakilan kelompok.</p>
+                </div>
+                <a href="{{ url_for('praktikan_dashboard') }}" class="btn btn-primary" style="width: 100%;">Masuk Portal</a>
+            </div>
+            
+            <div class="card glass-panel" style="text-align: center; display: flex; flex-direction: column; justify-content: space-between; min-height: 250px;">
+                <div>
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">📊</div>
+                    <h2 class="card-title" style="text-align: center;">Portal Asprak</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 2rem;">Kelola pengumpulan dan berikan nilai kepada praktikan.</p>
+                </div>
+                <a href="{{ url_for('asprak_login') }}" class="btn btn-outline" style="width: 100%;">Login Asprak</a>
+            </div>
         </div>
-        
-        <div class="card glass-panel" style="text-align: center;">
-            <div style="font-size: 2rem; margin-bottom: 1rem;">📊</div>
-            <h2 class="card-title" style="text-align: center;">Portal Asprak</h2>
-            <p style="color: var(--text-muted); margin-bottom: 2rem;">Kelola pengumpulan dan berikan nilai kepada praktikan.</p>
-            <a href="{{ url_for('asprak_login') }}" class="btn btn-outline" style="width: 100%;">Login Asprak</a>
+
+        <!-- Row 2: Lucky Spin Project (Horizontal full-width card) -->
+        <div class="card glass-panel" style="text-align: center; display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap; padding: 1.5rem 2.5rem; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 1.5rem; text-align: left; flex: 1; min-width: 280px;">
+                <div style="font-size: 2.5rem;">🎡</div>
+                <div>
+                    <h2 class="card-title" style="margin-bottom: 0.25rem; text-align: left;">Lucky Spin Project</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 0;">Undi topik proyek praktikum mekatronika kelompok Anda di sini.</p>
+                </div>
+            </div>
+            <div style="flex-shrink: 0; min-width: 200px;">
+                <a href="{{ url_for('spin_page') }}" class="btn btn-secondary" style="width: 100%; border-color: var(--primary); font-weight: 700; padding: 0.8rem 2rem;">Mulai Undi</a>
+            </div>
         </div>
     </div>
 </div>

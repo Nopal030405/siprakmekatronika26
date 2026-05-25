@@ -28,6 +28,7 @@
     <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='manage_asprak') }}" class="btn {% if active_tab == 'manage_asprak' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Tambah Data">👤</a>
     <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='manage_module') }}" class="btn {% if active_tab == 'manage_module' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Kelola Modul">📚</a>
     <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='data_asprak') }}" class="btn {% if active_tab == 'data_asprak' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Data Asprak">📋</a>
+    <a href="{{ url_for('asprak_dashboard', course_id=sel_course, tab='spin') }}" class="btn {% if active_tab == 'spin' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius:12px; font-size:1.4rem; padding: 0.5rem; flex:1; display:flex; justify-content:center;" title="Undian Project">🎡</a>
 </div>
 {% endif %}
 {% if not admin %}
@@ -202,6 +203,137 @@
             </div>
         </div>
 {% endif %}
+
+{% if active_tab == 'spin' and admin %}
+<div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start;">
+    
+    <!-- Kolom Kiri: Hasil Undian Kelompok -->
+    <div class="card glass-panel" style="border-left: 3px solid var(--primary); margin-top: 0; min-height: 500px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h3 class="card-title" style="margin-bottom: 0.25rem;">📋 Hasil Undian</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Data kelompok yang sudah spin.</p>
+            </div>
+            <div>
+                <form method="POST" action="{{ url_for('reset_spins') }}" onsubmit="return confirm('Apakah Anda yakin ingin mereset SEMUA hasil undian kelompok? Tindakan ini tidak dapat dibatalkan.')">
+                    <input type="hidden" name="course_id" value="{{ sel_course }}">
+                    <button type="submit" class="btn btn-danger" style="font-size: 0.8rem; font-weight: 700; padding: 0.4rem 0.8rem;">🚨 Reset Hasil</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="grade-table" style="font-size: 0.85rem;">
+                <thead>
+                    <tr>
+                        <th style="width: 90px;">Kelompok</th>
+                        <th>Perwakilan</th>
+                        <th>Proyek</th>
+                        <th style="width: 70px; text-align: center;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in project_spins %}
+                    <tr>
+                        <td style="font-weight: 700; color: var(--primary);">Kelompok {{ s.group_id }}</td>
+                        <td>{{ s.representative_name }}</td>
+                        <td>
+                            <span style="font-weight: 600; background: var(--primary-light); color: var(--primary); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.8rem; display: inline-block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ s.project_name }}">
+                                {{ s.project_name }}
+                            </span>
+                        </td>
+                        <td style="text-align: center;">
+                            <form method="POST" action="{{ url_for('delete_spin', id=s.id) }}" onsubmit="return confirm('Hapus hasil undian Kelompok {{ s.group_id }}? Kelompok tersebut akan dapat melakukan spin ulang.')">
+                                <button type="submit" class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" title="Hapus Hasil Spin">🗑</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                            Belum ada kelompok yang melakukan undian.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Kolom Kanan: Pengaturan Pilihan & Jumlah Kelompok -->
+    <div class="card glass-panel" style="border-left: 3px solid var(--secondary); margin-top: 0; min-height: 500px;">
+        <h3 class="card-title" style="margin-bottom: 1.5rem;">⚙️ Pengaturan Roda Putar</h3>
+        
+        <!-- Jumlah Kelompok -->
+        <div style="background: var(--primary-light); padding: 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; border: 1px dashed var(--primary);">
+            <h4 style="margin-bottom:0.75rem; color:var(--primary); font-size:0.9rem; font-weight: 700;">👥 Jumlah Kelompok (Total Groups)</h4>
+            <form method="POST" action="{{ url_for('update_total_groups') }}" style="display: flex; gap: 0.75rem; align-items: center;">
+                <input type="hidden" name="course_id" value="{{ sel_course }}">
+                <input type="number" name="total_groups" value="{{ total_groups }}" class="form-control" style="width: 100px; text-align: center; font-weight: 700;" min="1" max="100" required>
+                <button type="submit" class="btn btn-primary" style="font-size: 0.85rem; font-weight: 700; padding: 0.5rem 1rem;">Simpan</button>
+            </form>
+        </div>
+
+        <!-- Tambah Pilihan Baru -->
+        <div style="margin-bottom: 1.5rem;">
+            <h4 style="margin-bottom:0.75rem; color:var(--text-heading); font-size:0.9rem; font-weight: 700;">➕ Tambah Topik/Pilihan Baru</h4>
+            <form method="POST" action="{{ url_for('add_spin_option') }}" style="display: flex; gap: 0.75rem; align-items: center;">
+                <input type="hidden" name="course_id" value="{{ sel_course }}">
+                <input type="text" name="name" class="form-control" placeholder="Masukkan nama topik baru..." required>
+                <button type="submit" class="btn btn-primary" style="font-size: 0.85rem; font-weight: 700; padding: 0.5rem 1rem; white-space: nowrap;">+ Tambah</button>
+            </form>
+        </div>
+
+        <!-- Daftar Pilihan Roda Putar -->
+        <div>
+            <h4 style="margin-bottom:0.75rem; color:var(--text-heading); font-size:0.9rem; font-weight: 700; border-bottom: 1px solid var(--table-border); padding-bottom: 0.5rem;">
+                🎡 Daftar Pilihan Roda ({{ spin_options|length }})
+            </h4>
+            <div style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; padding-right: 0.25rem;">
+                {% for opt in spin_options %}
+                <div class="option-item-container">
+                    <div id="view-option-{{ opt.id }}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.5rem; background: var(--bg-surface); border: 1px solid var(--table-border); border-radius: var(--radius-sm);">
+                        <span style="font-size: 0.85rem; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;" title="{{ opt.name }}">
+                            {{ loop.index }}. {{ opt.name }}
+                        </span>
+                        <div style="display: flex; gap: 0.25rem;">
+                            <button type="button" class="btn btn-secondary" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="showEditOption('{{ opt.id }}')">✏️</button>
+                            <form method="POST" action="{{ url_for('delete_spin_option', id=opt.id) }}" style="display: inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus pilihan ini? Jika pilihan ini sudah didapatkan oleh kelompok, pastikan Anda tahu apa yang Anda lakukan.')">
+                                <input type="hidden" name="course_id" value="{{ sel_course }}">
+                                <button type="submit" class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;">🗑</button>
+                            </form>
+                        </div>
+                    </div>
+                    <form id="edit-option-{{ opt.id }}" method="POST" action="{{ url_for('edit_spin_option', id=opt.id) }}" style="display: none; align-items: center; gap: 0.4rem; padding: 0.4rem 0.5rem; background: var(--bg-surface); border: 1px solid var(--primary-light); border-radius: var(--radius-sm);">
+                        <input type="hidden" name="course_id" value="{{ sel_course }}">
+                        <input type="text" name="name" value="{{ opt.name }}" class="form-control" style="flex: 1; padding: 0.25rem 0.5rem; font-size: 0.85rem;" required>
+                        <button type="submit" class="btn btn-success" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">💾</button>
+                        <button type="button" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="hideEditOption('{{ opt.id }}')">❌</button>
+                    </form>
+                </div>
+                {% else %}
+                <div style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.85rem;">
+                    Belum ada pilihan proyek mekatronika.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function showEditOption(id) {
+        document.getElementById('view-option-' + id).style.setProperty('display', 'none', 'important');
+        document.getElementById('edit-option-' + id).style.setProperty('display', 'flex', 'important');
+    }
+    function hideEditOption(id) {
+        document.getElementById('view-option-' + id).style.setProperty('display', 'flex', 'important');
+        document.getElementById('edit-option-' + id).style.setProperty('display', 'none', 'important');
+    }
+</script>
+{% endif %}
+
 {% if active_tab == "gdrive" %}
     <div class="card glass-panel" style="border-left: 3px solid var(--secondary);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">

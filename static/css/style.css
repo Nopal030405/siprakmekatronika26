@@ -934,3 +934,64 @@ tbody tr:last-child td {
         padding-left: 0 !important;
     }
 }
+
+/* ============================
+   LUCKY SPIN PROJECT STYLING
+   ============================ */
+.grid-spin-container {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 2rem;
+    align-items: start;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.spin-sidebar {
+    position: sticky;
+    top: 2rem;
+}
+
+.results-list {
+    max-height: 520px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.result-item {
+    transition: var(--transition);
+}
+
+.result-item:hover {
+    transform: translateX(4px);
+    box-shadow: var(--shadow-sm);
+}
+
+.wheel-wrapper {
+    position: relative;
+    user-select: none;
+}
+
+@media (max-width: 900px) {
+    .grid-spin-container {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .spin-sidebar {
+        position: relative;
+        top: 0;
+    }
+    
+    .wheel-wrapper {
+        width: 300px !important;
+        height: 300px !important;
+        margin: 1rem 0 !important;
+    }
+    
+    #wheel-canvas {
+        width: 300px !important;
+        height: 300px !important;
+    }
+}
+

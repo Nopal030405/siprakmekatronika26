@@ -87,6 +87,51 @@ def init_db():
         )
     ''')
 
+    # Project Spins table check
+    try:
+        c.execute("SELECT course_id FROM project_spins LIMIT 1")
+    except sqlite3.OperationalError:
+        c.execute("DROP TABLE IF EXISTS project_spins")
+
+    # Project Spins table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS project_spins (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            course_id INTEGER,
+            group_id INTEGER NOT NULL,
+            representative_name TEXT NOT NULL,
+            project_name TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(course_id) REFERENCES courses(id),
+            UNIQUE(course_id, group_id)
+        )
+    ''')
+
+    # Spin Options table check
+    try:
+        c.execute("SELECT course_id FROM spin_options LIMIT 1")
+    except sqlite3.OperationalError:
+        c.execute("DROP TABLE IF EXISTS spin_options")
+
+    # Spin Options table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS spin_options (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            course_id INTEGER,
+            name TEXT NOT NULL,
+            FOREIGN KEY(course_id) REFERENCES courses(id),
+            UNIQUE(course_id, name)
+        )
+    ''')
+
+    # Settings table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    ''')
+
     # ========================
     # CLEANUP & MINIMAL SEEDING
     # ========================
@@ -102,11 +147,46 @@ def init_db():
     else:
         course_id = course[0]
     
+    # Seed default spin options and total groups for each course if empty
+    c.execute("SELECT id FROM courses")
+    courses = c.fetchall()
+    for crs in courses:
+        cid = crs[0]
+        c.execute("SELECT COUNT(*) FROM spin_options WHERE course_id=?", (cid,))
+        if c.fetchone()[0] == 0:
+            default_projects = [
+                "Sistem Kontrol Ketinggian Platform Lift dengan Penolakan Gangguan Beban",
+                "Sistem Kontrol Posisi Bola pada Bidang Miring (Ball and Beam)",
+                "Sistem Kontrol Intensitas Cahaya Ruangan",
+                "Sistem Kontrol Gaya Angkat Propeller (Thrust Levitation)",
+                "Sistem Kontrol Sudut Pendulum Terbalik (Inverted Pendulum)",
+                "Sistem Kontrol Keseimbangan Platform Satu Sumbu (Tilt Balance)",
+                "Sistem Kontrol Posisi Lengan Mekanik dengan Penolakan Gangguan Beban",
+                "Sistem Kontrol Ketinggian Bola Mengambang (Floating Ball)",
+                "Sistem Kontrol Tracking Cahaya Matahari (Solar Tracker)",
+                "Sistem Kontrol Peredam Guncangan Aktif (Active Suspension)",
+                "Sistem Kontrol Levitasi Magnetik (Magnetic Levitation)",
+                "Sistem Kontrol Penahan Posisi Roda Reaksi (Reaction Wheel Stabilizer)"
+            ]
+            for p in default_projects:
+                c.execute("INSERT OR IGNORE INTO spin_options (course_id, name) VALUES (?, ?)", (cid, p))
+
+        c.execute("SELECT COUNT(*) FROM settings WHERE key=?", (f"total_groups_{cid}",))
+        if c.fetchone()[0] == 0:
+            c.execute("INSERT INTO settings (key, value) VALUES (?, '12')", (f"total_groups_{cid}",))
+
     # Ensure Admin exists
-    admin = c.execute("SELECT id FROM users WHERE is_admin=1").fetchone()
+    try:
+        admin = c.execute("SELECT id FROM users WHERE is_admin=1").fetchone()
+    except sqlite3.OperationalError:
+        admin = None
+        
     if not admin:
-        c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin, is_co_asprak, pembukuan_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                  ('Labmekautm', 'ASPRAK', 0, 'Labmeka030405.', course_id, 1, 0, 0))
+        try:
+            c.execute("INSERT INTO users (name, role, group_id, password, course_id, is_admin, is_co_asprak, pembukuan_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                      ('Labmekautm', 'ASPRAK', 0, 'Labmeka030405.', course_id, 1, 0, 0))
+        except sqlite3.OperationalError:
+            pass
     
     conn.commit()
     conn.close()
@@ -119,6 +199,68 @@ def migrate():
     # Courses table
     c.execute('''CREATE TABLE IF NOT EXISTS courses (
         id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, description TEXT)''')
+    
+    # Project Spins table migration check
+    try:
+        c.execute("SELECT course_id FROM project_spins LIMIT 1")
+    except sqlite3.OperationalError:
+        c.execute("DROP TABLE IF EXISTS project_spins")
+        
+    c.execute('''CREATE TABLE IF NOT EXISTS project_spins (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        course_id INTEGER,
+        group_id INTEGER NOT NULL,
+        representative_name TEXT NOT NULL,
+        project_name TEXT NOT NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(course_id) REFERENCES courses(id),
+        UNIQUE(course_id, group_id))''')
+
+    # Spin Options table migration check
+    try:
+        c.execute("SELECT course_id FROM spin_options LIMIT 1")
+    except sqlite3.OperationalError:
+        c.execute("DROP TABLE IF EXISTS spin_options")
+        
+    c.execute('''CREATE TABLE IF NOT EXISTS spin_options (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        course_id INTEGER,
+        name TEXT NOT NULL,
+        FOREIGN KEY(course_id) REFERENCES courses(id),
+        UNIQUE(course_id, name))''')
+
+    # Settings table
+    c.execute('''CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL)''')
+
+    # Seed default spin options and total groups for each course if empty
+    c.execute("SELECT id FROM courses")
+    courses = c.fetchall()
+    for crs in courses:
+        cid = crs[0]
+        c.execute("SELECT COUNT(*) FROM spin_options WHERE course_id=?", (cid,))
+        if c.fetchone()[0] == 0:
+            default_projects = [
+                "Sistem Kontrol Ketinggian Platform Lift dengan Penolakan Gangguan Beban",
+                "Sistem Kontrol Posisi Bola pada Bidang Miring (Ball and Beam)",
+                "Sistem Kontrol Intensitas Cahaya Ruangan",
+                "Sistem Kontrol Gaya Angkat Propeller (Thrust Levitation)",
+                "Sistem Kontrol Sudut Pendulum Terbalik (Inverted Pendulum)",
+                "Sistem Kontrol Keseimbangan Platform Satu Sumbu (Tilt Balance)",
+                "Sistem Kontrol Posisi Lengan Mekanik dengan Penolakan Gangguan Beban",
+                "Sistem Kontrol Ketinggian Bola Mengambang (Floating Ball)",
+                "Sistem Kontrol Tracking Cahaya Matahari (Solar Tracker)",
+                "Sistem Kontrol Peredam Guncangan Aktif (Active Suspension)",
+                "Sistem Kontrol Levitasi Magnetik (Magnetic Levitation)",
+                "Sistem Kontrol Penahan Posisi Roda Reaksi (Reaction Wheel Stabilizer)"
+            ]
+            for p in default_projects:
+                c.execute("INSERT OR IGNORE INTO spin_options (course_id, name) VALUES (?, ?)", (cid, p))
+
+        c.execute("SELECT COUNT(*) FROM settings WHERE key=?", (f"total_groups_{cid}",))
+        if c.fetchone()[0] == 0:
+            c.execute("INSERT INTO settings (key, value) VALUES (?, '12')", (f"total_groups_{cid}",))
     
     # Add columns if not exist
     migrations = [

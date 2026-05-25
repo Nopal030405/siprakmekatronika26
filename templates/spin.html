@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header animate-fade">
+    <h1 style="font-size: 2.2rem; color: var(--primary); margin-bottom: 0.25rem;">🎡 Lucky Spin Project</h1>
+    <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto; margin-bottom: 1.5rem;">
+        Undian topik proyek praktikum mekatronika secara acak, unik, dan transparan. Satu kelompok hanya diwakili satu kali spin.
+    </p>
+    
+    {% if courses %}
+    <div style="margin: 0 auto; text-align: center; max-width: 320px; width: 100%;">
+        <form method="GET" action="{{ url_for('spin_page') }}">
+            <label for="course-select-main" style="font-weight: 600; color: var(--text-muted); font-size: 0.85rem; display: block; margin-bottom: 0.4rem;">Pilih Mata Kuliah:</label>
+            <select id="course-select-main" name="course_id" class="form-control" onchange="this.form.submit()" style="text-align-last: center; font-weight: 700; border-color: var(--primary); box-shadow: var(--shadow-sm);">
+                {% for c in courses %}
+                    <option value="{{ c.id }}" {% if c.id == sel_course %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Grid Layout -->
+<div class="grid-spin-container animate-fade" style="margin-top: 2rem;">
+    
+    <!-- Kolom Kiri: Hasil Undian Kelompok (Left Tab/Sidebar style) -->
+    <div class="glass-panel spin-sidebar" style="padding: 1.5rem; height: fit-content;">
+        <h2 style="font-size: 1.15rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--table-border); padding-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-heading);">
+            <span>📋</span> Daftar Hasil Undian
+        </h2>
+        <div class="results-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            {% for i in range(1, total_groups + 1) %}
+                {% if i in group_results %}
+                    <div class="result-item spun" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-radius: var(--radius-sm); background: var(--success-bg); border: 1px solid rgba(16, 185, 129, 0.15); transition: var(--transition);">
+                        <div>
+                            <span style="font-weight: 700; font-size: 0.9rem; color: var(--success);">Kelompok {{ i }}</span>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem;">Oleh: {{ group_results[i]['name'] }}</div>
+                        </div>
+                        <span class="project-badge" style="font-size: 0.8rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 4px; background: var(--primary); color: white; box-shadow: var(--shadow-sm); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ group_results[i]['project'] }}">
+                            {{ group_results[i]['project'] }}
+                        </span>
+                    </div>
+                {% else %}
+                    <div class="result-item unspun" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-radius: var(--radius-sm); background: var(--bg-surface); border: 1px solid var(--table-border); opacity: 0.75; transition: var(--transition);">
+                        <span style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Kelompok {{ i }}</span>
+                        <span style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted); background: var(--toggle-bg); padding: 0.2rem 0.5rem; border-radius: 4px;">
+                            Belum Spin
+                        </span>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Kolom Kanan: Roda Putar & Form -->
+    <div class="glass-panel spin-main-content" style="padding: 2.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 480px; position: relative; overflow: hidden;">
+        
+        <!-- Canvas Confetti Overlay -->
+        <canvas id="confetti-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;"></canvas>
+
+        {% if remaining_projects|length == 0 %}
+            <div style="padding: 2rem;">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">🎉</div>
+                <h2 style="font-size: 1.5rem; color: var(--success); margin-bottom: 0.5rem;">Undian Selesai!</h2>
+                <p style="color: var(--text-muted); max-width: 400px; margin: 0 auto;">
+                    Semua {{ total_groups }} kelompok telah mendapatkan topik proyek praktikum mekatronika masing-masing. Terima kasih atas partisipasinya!
+                </p>
+            </div>
+        {% else %}
+            <!-- STATE 1: FORM PENDAFTARAN -->
+            <div id="form-container" style="width: 100%; max-width: 420px; transition: var(--transition);">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">✍️</div>
+                <h3 style="font-size: 1.25rem; margin-bottom: 1.5rem; color: var(--text-heading);">Verifikasi Kelompok Anda</h3>
+                
+                <div class="alert error" id="form-error" style="display: none; text-align: left;"></div>
+                
+                <div class="form-group" style="text-align: left;">
+                    <label for="rep-name">Nama Perwakilan Kelompok</label>
+                    <input type="text" id="rep-name" class="form-control" placeholder="Masukkan nama lengkap Anda..." required>
+                </div>
+                
+                <div class="form-group" style="text-align: left;">
+                    <label for="group-select">Pilih Kelompok</label>
+                    <select id="group-select" class="form-control" required>
+                        <option value="" disabled selected>-- Pilih Kelompok Anda --</option>
+                        {% for i in range(1, total_groups + 1) %}
+                            {% if i not in taken_groups %}
+                                <option value="{{ i }}">Kelompok {{ i }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <button type="button" onclick="verifyForm()" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                    Masuk ke Roda Putar
+                </button>
+            </div>
+
+            <!-- STATE 2: RODA PUTAR (Hidden by default) -->
+            <div id="wheel-container" style="display: none; width: 100%; flex-direction: column; align-items: center; transition: var(--transition);">
+                <div style="margin-bottom: 1rem;">
+                    <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: var(--primary); background: var(--primary-light); padding: 0.3rem 0.8rem; border-radius: 999px;" id="active-group-label">
+                        Kelompok X
+                    </span>
+                </div>
+
+                <!-- Lucky Wheel Wrapper with Pointer -->
+                <div class="wheel-wrapper" style="position: relative; width: 380px; height: 380px; margin: 1.5rem 0;">
+                    <!-- Pointer (Arrow) -->
+                    <div class="wheel-pointer" style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 25px solid #ef4444; z-index: 5; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));"></div>
+                    
+                    <!-- Wheel Canvas -->
+                    <canvas id="wheel-canvas" width="380" height="380" data-remaining='{{ remaining_projects|tojson if remaining_projects else "[]" }}' style="width: 380px; height: 380px; border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.15), inset 0 0 0 6px var(--surface-border); border: 2px solid var(--surface-border); transition: transform 6s cubic-bezier(0.1, 0.85, 0.15, 1);"></canvas>
+                    
+                    <!-- Center Pin -->
+                    <div class="wheel-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; background: white; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 4; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; border: 4px solid var(--primary);">
+                        🎡
+                    </div>
+                </div>
+
+                <button type="button" id="spin-button" onclick="executeSpin()" class="btn btn-primary" style="padding: 0.8rem 2.5rem; font-size: 1rem; border-radius: 999px; box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);">
+                    🔮 SPIN NOW!
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Hasil (Pop-up Sukses) -->
+<div id="result-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 999; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.4s ease;">
+    <div class="glass-panel" style="max-width: 450px; width: 90%; padding: 2.5rem; text-align: center; background: var(--bg-surface); position: relative; transform: scale(0.8); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">🏆</div>
+        <h2 style="font-size: 1.6rem; color: var(--success); margin-bottom: 0.5rem;">Selamat!</h2>
+        <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.5rem;" id="modal-intro">
+            Kelompok X berhasil mendapatkan proyek:
+        </p>
+        <div style="font-size: 1.25rem; font-weight: 700; color: white; background: var(--primary); padding: 0.8rem 1.5rem; border-radius: var(--radius-md); box-shadow: var(--shadow-md); margin-bottom: 2rem;" id="modal-project-name">
+            Project Name Here
+        </div>
+        <button type="button" onclick="closeModalAndReload()" class="btn btn-primary" style="width: 100%;">
+            Tutup & Perbarui Halaman
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Local list of remaining projects retrieved from data attribute on canvas
+    const canvasEl = document.getElementById('wheel-canvas');
+    let remainingProjects = canvasEl ? JSON.parse(canvasEl.getAttribute('data-remaining') || '[]') : [];
+    let verifiedName = "";
+    let verifiedGroupId = null;
+    let isSpinning = false;
+
+    // Palette Warna Premium untuk Roda
+    const colors = [
+        '#4f46e5', // indigo
+        '#7c3aed', // violet
+        '#0891b2', // cyan
+        '#059669', // emerald
+        '#db2777', // pink
+        '#ea580c', // orange
+        '#2563eb', // blue
+        '#475569', // slate
+        '#b45309', // amber
+        '#be185d', // rose
+        '#4338ca', // darker indigo
+        '#6d28d9'  // darker violet
+    ];
+
+    function verifyForm() {
+        const nameInput = document.getElementById('rep-name');
+        const groupSelect = document.getElementById('group-select');
+        const errDiv = document.getElementById('form-error');
+
+        errDiv.style.display = 'none';
+
+        if (!nameInput.value.trim()) {
+            errDiv.innerText = "Silakan masukkan nama perwakilan.";
+            errDiv.style.display = 'block';
+            return;
+        }
+        if (!groupSelect.value) {
+            errDiv.innerText = "Silakan pilih kelompok.";
+            errDiv.style.display = 'block';
+            return;
+        }
+
+        verifiedName = nameInput.value.trim();
+        verifiedGroupId = groupSelect.value;
+
+        // Beralih tampilan ke Roda Putar
+        document.getElementById('form-container').style.display = 'none';
+        
+        const wheelContainer = document.getElementById('wheel-container');
+        wheelContainer.style.display = 'flex';
+        document.getElementById('active-group-label').innerText = `Kelompok ${verifiedGroupId} | Perwakilan: ${verifiedName}`;
+        
+        // Gambar Roda Putar
+        drawWheel();
+    }
+
+    function drawWheel() {
+        const canvas = document.getElementById('wheel-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = Math.min(centerX, centerY) - 8;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const numSlices = remainingProjects.length;
+        const angleStep = (2 * Math.PI) / numSlices;
+
+        // Render Slices
+        for (let i = 0; i < numSlices; i++) {
+            const startAngle = i * angleStep;
+            const endAngle = startAngle + angleStep;
+
+            // Draw pie slice
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+            ctx.closePath();
+
+            // Set slice color from palette
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.fill();
+
+            // Slice border
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.stroke();
+
+            // Draw Project Text
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(startAngle + angleStep / 2);
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#ffffff';
+            ctx.font = numSlices > 8 ? '600 10px Inter, sans-serif' : '600 12px Inter, sans-serif';
+
+            // Truncate text if too long
+            let text = remainingProjects[i];
+            if (text.length > 25) {
+                text = text.substring(0, 22) + '...';
+            }
+            ctx.fillText(text, radius - 25, 4);
+            ctx.restore();
+        }
+
+        // Draw Outer Circular Border ring
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.stroke();
+    }
+
+    function executeSpin() {
+        if (isSpinning) return;
+        isSpinning = true;
+
+        const spinBtn = document.getElementById('spin-button');
+        spinBtn.disabled = true;
+        spinBtn.innerText = "⏳ Sedang Mengundi...";
+
+        // Hubungi server untuk menentukan project secara acak aman
+        fetch('/spin/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: verifiedName,
+                group_id: verifiedGroupId,
+                course_id: Number("{{ sel_course }}") || null
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.message || "Gagal melakukan undian.") });
+            }
+            return response.json();
+        })
+        .then(data => {
+            const winningIndex = data.index;
+            const winningProject = data.project_name;
+            const numSlices = remainingProjects.length;
+
+            const sliceAngleDeg = 360 / numSlices;
+            // Hitung target angle agar item terpilih berhenti tepat di atas (270 derajat)
+            // Di Canvas, angle 0 di jam 3 (kanan). Jam 12 adalah 270 derajat.
+            // Rotasi berputar searah jarum jam, jadi kita hitung target angle searah jarum jam.
+            const targetAngle = 270 - (winningIndex + 0.5) * sliceAngleDeg;
+            
+            // Tambahkan 5 putaran penuh (1800 derajat) agar roda berputar cepat di awal
+            const finalRotation = 360 * 5 + targetAngle;
+
+            const canvas = document.getElementById('wheel-canvas');
+            canvas.style.transform = `rotate(${finalRotation}deg)`;
+
+            // Tunggu sampai animasi transisi CSS roda putar selesai (6 detik)
+            setTimeout(() => {
+                showSuccessResult(winningProject);
+            }, 6200);
+        })
+        .catch(err => {
+            alert("Error: " + err.message);
+            isSpinning = false;
+            spinBtn.disabled = false;
+            spinBtn.innerText = "🔮 SPIN NOW!";
+        });
+    }
+
+    function showSuccessResult(project) {
+        // Nyalakan confetti
+        startConfetti();
+
+        // Tampilkan modal hasil
+        const modal = document.getElementById('result-modal');
+        const modalText = document.getElementById('modal-intro');
+        const modalProj = document.getElementById('modal-project-name');
+
+        modalText.innerHTML = `Selamat Kelompok <strong>${verifiedGroupId}</strong> (${verifiedName}), Anda resmi mendapatkan proyek:`;
+        modalProj.innerText = project;
+
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.style.opacity = '1';
+            modal.querySelector('.glass-panel').style.transform = 'scale(1)';
+        }, 50);
+    }
+
+    function closeModalAndReload() {
+        window.location.reload();
+    }
+
+    // ==========================================
+    // LIGHTWEIGHT CANVAS CONFETTI IMPLEMENTATION
+    // ==========================================
+    let confettiActive = false;
+    function startConfetti() {
+        const canvas = document.getElementById('confetti-canvas');
+        const ctx = canvas.getContext('2d');
+        let width = canvas.width = canvas.parentElement.offsetWidth;
+        let height = canvas.height = canvas.parentElement.offsetHeight;
+
+        window.addEventListener('resize', () => {
+            if (!canvas) return;
+            width = canvas.width = canvas.parentElement.offsetWidth;
+            height = canvas.height = canvas.parentElement.offsetHeight;
+        });
+
+        const colorsList = ['#f43f5e', '#3b82f6', '#10b981', '#eab308', '#a855f7', '#ff7849'];
+        const numConfetti = 80;
+        const confettis = [];
+
+        for (let i = 0; i < numConfetti; i++) {
+            confettis.push({
+                x: Math.random() * width,
+                y: Math.random() * height - height,
+                r: Math.random() * 6 + 4,
+                d: Math.random() * height,
+                color: colorsList[Math.floor(Math.random() * colorsList.length)],
+                tilt: Math.random() * 10 - 5,
+                tiltAngleIncremental: Math.random() * 0.07 + 0.02,
+                tiltAngle: 0
+            });
+        }
+
+        confettiActive = true;
+        function drawConfetti() {
+            if (!confettiActive) return;
+            requestAnimationFrame(drawConfetti);
+            ctx.clearRect(0, 0, width, height);
+
+            confettis.forEach((c) => {
+                c.tiltAngle += c.tiltAngleIncremental;
+                c.y += (Math.cos(c.d) + 3 + c.r / 2) / 2;
+                c.x += Math.sin(c.tiltAngle);
+                c.tilt = Math.sin(c.tiltAngle - (confettis.indexOf(c) / 3)) * 15;
+
+                // Loop kembali ke atas jika keluar layar bawah
+                if (c.y > height) {
+                    c.y = -20;
+                    c.x = Math.random() * width;
+                }
+
+                ctx.beginPath();
+                ctx.lineWidth = c.r;
+                ctx.strokeStyle = c.color;
+                ctx.moveTo(c.x + c.tilt + c.r / 2, c.y);
+                ctx.lineTo(c.x + c.tilt, c.y + c.tilt + c.r / 2);
+                ctx.stroke();
+            });
+        }
+
+        drawConfetti();
+    }
+</script>
+{% endblock %}
