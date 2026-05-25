@@ -1,2 +1,4 @@
-flask
+Flask
 openpyxl
+scikit-learn
+gunicorn
